@@ -755,9 +755,10 @@ static int admv1014_probe(struct spi_device *spi)
 		return ret;
 
 	ret = admv1014_init(dev);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_err(&spi->dev, "admv1014 init failed\n");
 		return ret;
+	}
 
 	return devm_iio_device_register(&spi->dev, indio_dev);
 }
