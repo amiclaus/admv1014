@@ -143,7 +143,6 @@ struct admv1014_dev {
 	bool			quad_ibias_pd;
 	bool			det_en;
 	bool			bg_pd;
-	u8			data[3];
 };
 
 static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114, 117, 118, 119, 120, 122, 123, 44, 45};
@@ -153,27 +152,26 @@ static int admv1014_spi_read(struct admv1014_dev *dev, unsigned int reg,
 {
 	int ret;
 	unsigned int cnt, temp;
+	u8 data[3];
 	struct spi_message m;
 	struct spi_transfer t = {0};
 
-	dev->data[0] = 0x80 | (reg << 1);
-	dev->data[1] = 0x0;
-	dev->data[2] = 0x0;
+	data[0] = 0x80 | (reg << 1);
+	data[1] = 0x0;
+	data[2] = 0x0;
 
-	t.rx_buf = dev->data;
-	t.tx_buf = dev->data;
+	t.rx_buf = data;
+	t.tx_buf = data;
 	t.len = 3;
 
 	spi_message_init_with_transfers(&m, &t, 1);
 
 	ret = spi_sync(dev->spi, &m);
-
 	if (ret < 0)
 		return ret;
 
-	temp = ((dev->data[0] | 0x80 | (reg << 1)) << 16) |
-		(dev->data[1] << 8) |
-		dev->data[2];
+	temp = ((data[0] | 0x80 | (reg << 1)) << 16) |
+		(data[1] << 8) | data[2];
 
 	if (dev->parity_en) {
 		cnt = hweight_long(temp);
@@ -187,10 +185,11 @@ static int admv1014_spi_read(struct admv1014_dev *dev, unsigned int reg,
 }
 
 static int admv1014_spi_write(struct admv1014_dev *dev,
-				      unsigned int reg,
-				      unsigned int val)
+				unsigned int reg,
+				unsigned int val)
 {
 	unsigned int cnt;
+	u8 data[3];
 	struct spi_message m;
 	struct spi_transfer t = {0};
 
@@ -202,15 +201,14 @@ static int admv1014_spi_write(struct admv1014_dev *dev,
 			val |= 0x1;
 	}
 
-	t.tx_buf = dev->data;
+	t.tx_buf = data;
 	t.len = 3;
 
-	dev->data[0] = (reg << 1) | (val >> 16);
-	dev->data[1] = val >> 8;
-	dev->data[2] = val;
+	data[0] = (reg << 1) | (val >> 16);
+	data[1] = val >> 8;
+	data[2] = val;
 
-	spi_message_init(&m);
-	spi_message_add_tail(&t, &m);
+	spi_message_init_with_transfers(&m, &t, 1);
 
 	return spi_sync(dev->spi, &m);
 }
@@ -226,8 +224,7 @@ static int admv1014_spi_update_bits(struct admv1014_dev *dev, unsigned int reg,
 	if (ret < 0)
 		goto exit;
 
-	temp = data & ~mask;
-	temp |= val & mask;
+	temp = (data & ~mask) | (val & mask);
 
 	ret = admv1014_spi_write(dev, reg, temp);
 
@@ -261,7 +258,7 @@ static int admv1014_update_vcm_settings(struct admv1014_dev *dev)
 	int ret;
 
 	vcm_mv = regulator_get_voltage(dev->reg) / 1000;
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
 		vcm_comp = 1050 + (i * 50);
 		if (vcm_mv == vcm_comp) {
 			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
@@ -303,7 +300,6 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 				return ret;
 
 			*val = (data & ADMV1014_IF_AMP_COARSE_GAIN_I_MSK) >> 8;
-
 			*val2 = data & ADMV1014_IF_AMP_FINE_GAIN_I_MSK;
 		} else {
 			ret = admv1014_spi_read(dev, ADMV1014_REG_IF_AMP_BB_AMP, &data);
@@ -356,7 +352,6 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 
 	switch (info) {
 	case IIO_CHAN_INFO_HARDWAREGAIN:
-
 		val2 /= 100000;
 
 		if (val < 0 || val > 15 || val2 < 0 || val2 > 9)
