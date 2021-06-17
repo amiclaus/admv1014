@@ -610,7 +610,7 @@ static int admv1014_dt_parse(struct admv1014_dev *dev)
 	if (IS_ERR(dev->clkin))
 		return PTR_ERR(dev->clkin);
 
-	return ret;
+	return of_clk_get_scale(spi->dev.of_node, NULL, &dev->clkscale);;
 }
 
 static int admv1014_probe(struct spi_device *spi)
@@ -655,8 +655,6 @@ static int admv1014_probe(struct spi_device *spi)
 	ret = devm_add_action_or_reset(&spi->dev, admv1014_clk_disable, dev->clkin);
 	if (ret < 0)
 		return ret;
-
-	of_clk_get_scale(spi->dev.of_node, NULL, &dev->clkscale);
 
 	dev->clkin_freq = clk_get_rate_scaled(dev->clkin, &dev->clkscale);
 
