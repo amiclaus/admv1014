@@ -128,6 +128,7 @@ struct admv1014_dev {
 	struct clk		*clkin;
 	struct clock_scale	clkscale;
 	struct notifier_block	nb;
+	/* Protect against concurrent accesses to the device */
 	struct mutex		lock;
 	struct regulator	*reg;
 	u64			clkin_freq;
@@ -152,7 +153,6 @@ static int admv1014_spi_read(struct admv1014_dev *dev, unsigned int reg,
 {
 	int ret;
 	unsigned int cnt, temp;
-	struct spi_message m;
 	struct spi_transfer t = {0};
 	u8 data[3];
 
@@ -164,9 +164,7 @@ static int admv1014_spi_read(struct admv1014_dev *dev, unsigned int reg,
 	t.tx_buf = &data[0];
 	t.len = 3;
 
-	spi_message_init_with_transfers(&m, &t, 1);
-
-	ret = spi_sync(dev->spi, &m);
+	ret = spi_sync_transfer(dev->spi, &t, 1);
 	if (ret < 0)
 		return ret;
 
@@ -206,24 +204,29 @@ static int admv1014_spi_write(struct admv1014_dev *dev,
 	return spi_write(dev->spi, &data[0], 3);
 }
 
-static int admv1014_spi_update_bits(struct admv1014_dev *dev, unsigned int reg,
+static int __admv1014_spi_update_bits(struct admv1014_dev *dev, unsigned int reg,
 			       unsigned int mask, unsigned int val)
 {
 	int ret;
 	unsigned int data, temp;
 
-	mutex_lock(&dev->lock);
 	ret = admv1014_spi_read(dev, reg, &data);
 	if (ret < 0)
-		goto exit;
+		return ret;
 
 	temp = (data & ~mask) | (val & mask);
 
-	ret = admv1014_spi_write(dev, reg, temp);
+	return admv1014_spi_write(dev, reg, temp);
+}
 
-exit:
+static int admv1014_spi_update_bits(struct admv1014_dev *dev, unsigned int reg,
+			       unsigned int mask, unsigned int val)
+{
+	int ret;
+
+	mutex_lock(&dev->lock);
+	ret = __admv1014_spi_update_bits(dev, reg, mask, val);
 	mutex_unlock(&dev->lock);
-
 	return ret;
 }
 
@@ -254,22 +257,18 @@ static int admv1014_update_vcm_settings(struct admv1014_dev *dev)
 	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
 		vcm_comp = 1050 + (i * 50);
 		if (vcm_mv == vcm_comp) {
-			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
+			ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
 							ADMV1014_MIXER_VGATE_MSK,
 							ADMV1014_MIXER_VGATE(mixer_vgate_table[i]));
 			if (ret < 0)
 				return ret;
 
-			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
-							ADMV1014_BB_AMP_REF_GEN_MSK,
-							ADMV1014_BB_AMP_REF_GEN(i));
-			if (ret < 0)
-				return ret;
-
 			bb_sw_high_low_cm = ~(i / 2);
 
-			return admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
+			ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
+							ADMV1014_BB_AMP_REF_GEN_MSK |
 							ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK,
+							ADMV1014_BB_AMP_REF_GEN(i) |
 							ADMV1014_BB_SWITCH_HIGH_LOW_CM(bb_sw_high_low_cm));
 		}
 	}
@@ -351,24 +350,22 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 
 		if (chan->channel2 == IIO_MOD_I) {
 			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP,
-							ADMV1014_IF_AMP_COARSE_GAIN_I_MSK,
-							ADMV1014_IF_AMP_COARSE_GAIN_I(val));
-			if (ret < 0)
-				return ret;
-
-			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP,
+							ADMV1014_IF_AMP_COARSE_GAIN_I_MSK |
 							ADMV1014_IF_AMP_FINE_GAIN_I_MSK,
+							ADMV1014_IF_AMP_COARSE_GAIN_I(val) |
 							ADMV1014_IF_AMP_FINE_GAIN_I(val2));
 		} else {
-			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP_BB_AMP,
+			mutex_lock(&dev->lock);
+			ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP_BB_AMP,
 							ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK,
 							ADMV1014_IF_AMP_COARSE_GAIN_Q(val));
 			if (ret < 0)
 				return ret;
 
-			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP,
+			ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP,
 							ADMV1014_IF_AMP_FINE_GAIN_Q_MSK,
 							ADMV1014_IF_AMP_FINE_GAIN_Q(val2));
+			mutex_unlock(&dev->lock);
 		}
 
 		return ret;
@@ -463,7 +460,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 	dev->parity_en = false;
 
 	/* Perform a software reset */
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
+	ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
 				 ADMV1014_SPI_SOFT_RESET_MSK,
 				 ADMV1014_SPI_SOFT_RESET(1));
 	if (ret < 0) {
@@ -471,7 +468,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 		return ret;
 	}
 
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
+	ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
 				 ADMV1014_SPI_SOFT_RESET_MSK,
 				 ADMV1014_SPI_SOFT_RESET(0));
 	if (ret < 0) {
@@ -479,7 +476,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 		return ret;
 	}
 
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
+	ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
 				 ADMV1014_PARITY_EN_MSK,
 				 ADMV1014_PARITY_EN(temp_parity));
 	if (ret < 0) {
@@ -505,7 +502,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 		return -EINVAL;
 	}
 
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_QUAD,
+	ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_QUAD,
 				 ADMV1014_QUAD_SE_MODE_MSK,
 				 ADMV1014_QUAD_SE_MODE(dev->quad_se_mode));
 	if (ret < 0) {
@@ -513,7 +510,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 		return ret;
 	}
 
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
+	ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
 				 ADMV1014_DET_PROG_MSK,
 				 ADMV1014_DET_PROG(dev->det_prog));
 	if (ret < 0) {
@@ -521,7 +518,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 		return ret;
 	}
 
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
+	ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
 				 ADMV1014_BB_AMP_GAIN_CTRL_MSK,
 				 ADMV1014_BB_AMP_GAIN_CTRL(dev->bb_amp_gain_ctrl));
 	if (ret < 0) {
@@ -559,7 +556,7 @@ static int admv1014_init(struct admv1014_dev *dev)
 			ADMV1014_DET_EN(dev->det_en)|
 			ADMV1014_BG_PD(dev->bg_pd);
 
-	return admv1014_spi_update_bits(dev, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+	return __admv1014_spi_update_bits(dev, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
 }
 
 static void admv1014_clk_disable(void *data)
@@ -567,7 +564,7 @@ static void admv1014_clk_disable(void *data)
 	clk_disable_unprepare(data);
 }
 
-static void admv1013_reg_disable(void *data)
+static void admv1014_reg_disable(void *data)
 {
 	regulator_disable(data);
 }
@@ -610,7 +607,7 @@ static int admv1014_dt_parse(struct admv1014_dev *dev)
 	if (IS_ERR(dev->clkin))
 		return PTR_ERR(dev->clkin);
 
-	return of_clk_get_scale(spi->dev.of_node, NULL, &dev->clkscale);;
+	return of_clk_get_scale(spi->dev.of_node, NULL, &dev->clkscale);
 }
 
 static int admv1014_probe(struct spi_device *spi)
@@ -643,7 +640,7 @@ static int admv1014_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1013_reg_disable,
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable,
 					dev->reg);
 	if (ret < 0)
 		return ret;
