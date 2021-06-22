@@ -294,13 +294,18 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 			*val = (data & ADMV1014_IF_AMP_COARSE_GAIN_I_MSK) >> 8;
 			*val2 = data & ADMV1014_IF_AMP_FINE_GAIN_I_MSK;
 		} else {
+			mutex_lock(&dev->lock);
+
 			ret = admv1014_spi_read(dev, ADMV1014_REG_IF_AMP_BB_AMP, &data);
-			if (ret < 0)
+			if (ret < 0) {
+				mutex_unlock(&dev->lock);
 				return ret;
+			}
 
 			*val = (data & ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK) >> 12;
 
 			ret = admv1014_spi_read(dev, ADMV1014_REG_IF_AMP, &data);
+			mutex_unlock(&dev->lock);
 			if (ret < 0)
 				return ret;
 
@@ -359,8 +364,10 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 			ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP_BB_AMP,
 							ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK,
 							ADMV1014_IF_AMP_COARSE_GAIN_Q(val));
-			if (ret < 0)
+			if (ret < 0) {
+				mutex_unlock(&dev->lock);
 				return ret;
+			}
 
 			ret = __admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP,
 							ADMV1014_IF_AMP_FINE_GAIN_Q_MSK,
