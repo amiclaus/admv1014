@@ -586,11 +586,11 @@ static void admv1014_clk_notifier_unreg(void *data)
 }
 
 static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
-	_ADMV1014_EXT_INFO("device_powerdown", ADMV1014_DEV_PWRDOWN, IIO_SEPARATE),
-	_ADMV1014_EXT_INFO("ibias_powerdown", ADMV1014_IBIAS_PWRDOWN, IIO_SEPARATE),
-	_ADMV1014_EXT_INFO("quad_ibias_powerdown", ADMV1014_QUAD_IBIAS_PWRDOWN, IIO_SEPARATE),
-	_ADMV1014_EXT_INFO("bandgap_powerdown", ADMV1014_BG_PWRDOWN, IIO_SEPARATE),
-	_ADMV1014_EXT_INFO("detector_powerdown", ADMV1014_DET_PWRDOWN, IIO_SEPARATE),
+	_ADMV1014_EXT_INFO("device_powerdown", IIO_SEPARATE, ADMV1014_DEV_PWRDOWN),
+	_ADMV1014_EXT_INFO("ibias_powerdown", IIO_SEPARATE, ADMV1014_IBIAS_PWRDOWN),
+	_ADMV1014_EXT_INFO("lo_path_powerdown", IIO_SEPARATE, ADMV1014_QUAD_IBIAS_PWRDOWN),
+	_ADMV1014_EXT_INFO("bandgap_powerdown", IIO_SEPARATE, ADMV1014_BG_PWRDOWN),
+	_ADMV1014_EXT_INFO("detector_powerdown", IIO_SEPARATE, ADMV1014_DET_PWRDOWN),
 	{ },
 };
 
