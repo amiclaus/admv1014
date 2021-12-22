@@ -94,6 +94,12 @@
 #define ADMV1014_REG_ADDR_WRITE_MSK		GENMASK(22, 17)
 #define ADMV1014_REG_DATA_MSK			GENMASK(16, 1)
 
+enum {
+	ADMV1014_SE_MODE_POS = 6,
+	ADMV1014_SE_MODE_NEG = 9,
+	ADMV1014_SE_MODE_DIFF = 12
+};
+
 struct admv1014_state {
 	struct spi_device	*spi;
 	struct clk		*clkin;
@@ -541,17 +547,27 @@ static void admv1014_powerdown(void *data)
 static int admv1014_properties_parse(struct admv1014_state *st)
 {
 	int ret;
+	const char *str;
 	struct spi_device *spi = st->spi;
 
-	st->det_en = device_property_read_bool(&spi->dev, "adi,det-en");
+	st->det_en = device_property_read_bool(&spi->dev, "adi,detector-enable");
 
-	ret = device_property_read_u32(&spi->dev, "adi,p1db-comp", &st->p1db_comp);
-	if (ret)
+	st->p1db_comp = device_property_read_bool(&spi->dev, "adi,p1db-comp-enable");
+	if (st->p1db_comp)
 		st->p1db_comp = 3;
 
-	ret = device_property_read_u32(&spi->dev, "adi,quad-se-mode", &st->quad_se_mode);
+	ret = device_property_read_string(&spi->dev, "adi,quad-se-mode", &str);
 	if (ret)
-		st->quad_se_mode = 12;
+		st->quad_se_mode = ADMV1014_SE_MODE_DIFF;
+
+	if (!strcmp(str, "diff"))
+		st->quad_se_mode = ADMV1014_SE_MODE_DIFF;
+	else if (!strcmp(str, "se-pos"))
+		st->quad_se_mode = ADMV1014_SE_MODE_POS;
+	else if (!strcmp(str, "se-neg"))
+		st->quad_se_mode = ADMV1014_SE_MODE_NEG;
+	else
+		return -EINVAL;
 
 	ret = device_property_read_u32(&spi->dev, "adi,det-prog", &st->det_prog);
 	if (ret)
