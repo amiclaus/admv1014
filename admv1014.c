@@ -88,6 +88,12 @@
 /* ADMV1014_REG_VVA_TEMP_COMP Map */
 #define ADMV1014_VVA_TEMP_COMP_MSK		GENMASK(15, 0)
 
+/* ADMV1014 Miscellaneous Defines */
+#define ADMV1014_READ				BIT(7)
+#define ADMV1014_REG_ADDR_READ_MSK		GENMASK(6, 1)
+#define ADMV1014_REG_ADDR_WRITE_MSK		GENMASK(22, 17)
+#define ADMV1014_REG_DATA_MSK			GENMASK(16, 1)
+
 struct admv1014_state {
 	struct spi_device	*spi;
 	struct clk		*clkin;
@@ -99,13 +105,7 @@ struct admv1014_state {
 	unsigned int		p1db_comp;
 	unsigned int		det_prog;
 	unsigned int		bb_amp_gain_ctrl;
-	bool			ibias_pd;
-	bool			if_amp_pd;
-	bool			quad_bg_pd;
-	bool			bb_amp_pd;
-	bool			quad_ibias_pd;
 	bool			det_en;
-	bool			bg_pd;
 	u8			data[3] ____cacheline_aligned;
 };
 
@@ -117,7 +117,7 @@ static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 	int ret;
 	struct spi_transfer t = {0};
 
-	st->data[0] = 0x80 | (reg << 1);
+	st->data[0] = ADMV1014_READ | FIELD_PREP(ADMV1014_REG_ADDR_READ_MSK, reg);
 	st->data[1] = 0x0;
 	st->data[2] = 0x0;
 
@@ -129,7 +129,7 @@ static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 	if (ret)
 		return ret;
 
-	*val = (get_unaligned_be24(&st->data[0]) >> 1) & GENMASK(15, 0);
+	*val = FIELD_GET(ADMV1014_REG_DATA_MSK, get_unaligned_be24(&st->data[0]));
 
 	return ret;
 }
@@ -150,7 +150,8 @@ static int __admv1014_spi_write(struct admv1014_state *st,
 				unsigned int reg,
 				unsigned int val)
 {
-	put_unaligned_be24((val << 1) | (reg << 17), &st->data[0]);
+	put_unaligned_be24(FIELD_PREP(ADMV1014_REG_DATA_MSK, val) |
+			   FIELD_PREP(ADMV1014_REG_ADDR_WRITE_MSK, reg), &st->data[0]);
 
 	return spi_write(st->spi, &st->data[0], 3);
 }
@@ -224,7 +225,8 @@ static int admv1014_update_vcm_settings(struct admv1014_state *st)
 		if (vcm_mv == vcm_comp) {
 			ret = __admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
 							 ADMV1014_MIXER_VGATE_MSK,
-							 FIELD_PREP(ADMV1014_MIXER_VGATE_MSK, mixer_vgate_table[i]));
+							 FIELD_PREP(ADMV1014_MIXER_VGATE_MSK,
+								    mixer_vgate_table[i]));
 			if (ret)
 				return ret;
 
@@ -459,7 +461,8 @@ static int admv1014_init(struct admv1014_state *st)
 
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_QUAD,
 					 ADMV1014_QUAD_SE_MODE_MSK,
-					 FIELD_PREP(ADMV1014_QUAD_SE_MODE_MSK, st->quad_se_mode));
+					 FIELD_PREP(ADMV1014_QUAD_SE_MODE_MSK,
+						    st->quad_se_mode));
 	if (ret) {
 		dev_err(&spi->dev, "Writing Quad SE Mode failed.\n");
 		return ret;
@@ -475,7 +478,8 @@ static int admv1014_init(struct admv1014_state *st)
 
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_BB_AMP_AGC,
 					 ADMV1014_BB_AMP_GAIN_CTRL_MSK,
-					 FIELD_PREP(ADMV1014_BB_AMP_GAIN_CTRL_MSK, st->bb_amp_gain_ctrl));
+					 FIELD_PREP(ADMV1014_BB_AMP_GAIN_CTRL_MSK,
+						    st->bb_amp_gain_ctrl));
 	if (ret) {
 		dev_err(&spi->dev, "Writing Baseband Gain Control failed.\n");
 		return ret;
@@ -493,23 +497,11 @@ static int admv1014_init(struct admv1014_state *st)
 		return ret;
 	}
 
-	enable_reg_msk = ADMV1014_IBIAS_PD_MSK |
-			 ADMV1014_P1DB_COMPENSATION_MSK |
-			 ADMV1014_IF_AMP_PD_MSK |
-			 ADMV1014_QUAD_BG_PD_MSK |
-			 ADMV1014_BB_AMP_PD_MSK |
-			 ADMV1014_QUAD_IBIAS_PD_MSK |
-			 ADMV1014_DET_EN_MSK |
-			 ADMV1014_BG_PD_MSK;
+	enable_reg_msk = ADMV1014_P1DB_COMPENSATION_MSK |
+			 ADMV1014_DET_EN_MSK;
 
-	enable_reg = FIELD_PREP(ADMV1014_IBIAS_PD_MSK, st->ibias_pd) |
-		     FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, st->p1db_comp) |
-		     FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, st->if_amp_pd) |
-		     FIELD_PREP(ADMV1014_QUAD_BG_PD_MSK, st->quad_bg_pd) |
-		     FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, st->bb_amp_pd) |
-		     FIELD_PREP(ADMV1014_QUAD_IBIAS_PD_MSK, st->quad_ibias_pd) |
-		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en) |
-		     FIELD_PREP(ADMV1014_BG_PD_MSK, st->bg_pd);
+	enable_reg = FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, st->p1db_comp) |
+		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en);
 
 	return __admv1014_spi_update_bits(st, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
 }
@@ -524,18 +516,34 @@ static void admv1014_reg_disable(void *data)
 	regulator_disable(data);
 }
 
+static void admv1014_powerdown(void *data)
+{
+	unsigned int enable_reg, enable_reg_msk;
+
+	/* Disable all components in the Enable Register */
+	enable_reg_msk = ADMV1014_IBIAS_PD_MSK |
+			ADMV1014_IF_AMP_PD_MSK |
+			ADMV1014_QUAD_BG_PD_MSK |
+			ADMV1014_BB_AMP_PD_MSK |
+			ADMV1014_QUAD_IBIAS_PD_MSK |
+			ADMV1014_BG_PD_MSK;
+
+	enable_reg = FIELD_PREP(ADMV1014_IBIAS_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_QUAD_BG_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_QUAD_IBIAS_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_BG_PD_MSK, 1);
+
+	admv1014_spi_update_bits(data, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+}
+
 static int admv1014_properties_parse(struct admv1014_state *st)
 {
 	int ret;
 	struct spi_device *spi = st->spi;
 
-	st->ibias_pd = device_property_read_bool(&spi->dev, "adi,ibias-pd");
-	st->if_amp_pd = device_property_read_bool(&spi->dev, "adi,if-amp-pd");
-	st->quad_bg_pd = device_property_read_bool(&spi->dev, "adi,quad-bg-pd");
-	st->bb_amp_pd = device_property_read_bool(&spi->dev, "adi,bb-amp-pd");
-	st->quad_ibias_pd = device_property_read_bool(&spi->dev, "adi,quad-ibias-pd");
 	st->det_en = device_property_read_bool(&spi->dev, "adi,det-en");
-	st->bg_pd = device_property_read_bool(&spi->dev, "adi,bg-pd");
 
 	ret = device_property_read_u32(&spi->dev, "adi,p1db-comp", &st->p1db_comp);
 	if (ret)
@@ -615,6 +623,10 @@ static int admv1014_probe(struct spi_device *spi)
 	mutex_init(&st->lock);
 
 	ret = admv1014_init(st);
+	if (ret)
+		return ret;
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_powerdown, st);
 	if (ret)
 		return ret;
 
