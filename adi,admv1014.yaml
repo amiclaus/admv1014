@@ -42,39 +42,9 @@ properties:
     description:
       Analog voltage regulator.
 
-  adi,ibias-pd:
-    description:
-      Power Down the Rx IBIAS.
-    type: boolean
-
-  adi,if-amp-pd:
-    description:
-      Power Down the IF Amp.
-    type: boolean
-
-  adi,quad-bg-pd:
-    description:
-      Power Down the Quadrupler Band Gap.
-    type: boolean
-
-  adi,bb-amp-pd:
-    description:
-      Power Down the Baseband Amp.
-    type: boolean
-
-  adi,quad-ibias-pd:
-    description:
-      Power Down the Quadrupler Bias Current.
-    type: boolean
-
   adi,det-en:
     description:
       Digital Rx Detector Enable.
-    type: boolean
-
-  adi,bg-pd:
-    description:
-      Power Down the Rx BG.
     type: boolean
 
   adi,p1db-comp:
