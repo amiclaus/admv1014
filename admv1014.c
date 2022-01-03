@@ -292,6 +292,7 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 		else
 			*val = FIELD_GET(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, data);
 
+		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_SCALE:
 		ret = admv1014_spi_read(st, ADMV1014_REG_MIXER, &data);
 		if (ret)
@@ -299,6 +300,12 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 
 		*val = FIELD_GET(ADMV1014_DET_PROG_MSK, data);
 		return IIO_VAL_INT;
+	case IIO_CHAN_INFO_HARDWAREGAIN:
+		ret = admv1014_spi_read(st, ADMV1014_REG_BB_AMP_AGC, &data);
+		if (ret)
+			return ret;
+
+		*val = FIELD_GET(ADMV1014_BB_AMP_GAIN_CTRL_MSK, data);
 		return IIO_VAL_INT;
 	default:
 		return -EINVAL;
@@ -334,6 +341,15 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 		return admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
 						ADMV1014_DET_PROG_MSK,
 						FIELD_PREP(ADMV1014_DET_PROG_MSK, val));
+	case IIO_CHAN_INFO_HARDWAREGAIN:
+		return admv1014_spi_update_bits(st, ADMV1014_REG_BB_AMP_AGC,
+						ADMV1014_BB_AMP_GAIN_CTRL_MSK,
+						FIELD_PREP(ADMV1014_BB_AMP_GAIN_CTRL_MSK, val));
+	default:
+		return -EINVAL;
+	}
+}
+
 static ssize_t admv1014_read(struct iio_dev *indio_dev,
 			     uintptr_t private,
 			     const struct iio_chan_spec *chan,
@@ -476,16 +492,6 @@ static int admv1014_freq_change(struct notifier_block *nb, unsigned long action,
 	return NOTIFY_OK;
 }
 
-#define ADMV1014_CHAN(_channel, rf_comp) {			\
-	.type = IIO_ALTVOLTAGE,					\
-	.modified = 1,						\
-	.output = 1,						\
-	.indexed = 1,						\
-	.channel2 = IIO_MOD_##rf_comp,				\
-	.channel = _channel,					\
-	.info_mask_separate = BIT(IIO_CHAN_INFO_HARDWAREGAIN) | \
-		BIT(IIO_CHAN_INFO_PHASE) |			\
-		BIT(IIO_CHAN_INFO_OFFSET)			\
 #define _ADMV1014_EXT_INFO(_name, _shared, _ident) { \
 		.name = _name, \
 		.read = admv1014_read, \
@@ -499,6 +505,18 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	_ADMV1014_EXT_INFO("gain_fine", IIO_SEPARATE, ADMV1014_GAIN_FINE),
 	{ },
 };
+
+#define ADMV1014_CHAN(_channel, rf_comp) {				\
+	.type = IIO_ALTVOLTAGE,						\
+	.modified = 1,							\
+	.output = 0,							\
+	.indexed = 1,							\
+	.channel2 = IIO_MOD_##rf_comp,					\
+	.channel = _channel,						\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_PHASE) |		\
+		BIT(IIO_CHAN_INFO_OFFSET),				\
+	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_HARDWAREGAIN)	\
+	}
 
 #define ADMV1014_CHAN_GAIN(_channel, rf_comp, _admv1014_ext_info) {	\
 	.type = IIO_ALTVOLTAGE,						\
