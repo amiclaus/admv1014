@@ -110,6 +110,8 @@ enum {
 	ADMV1014_GAIN_FINE,
 };
 
+static const int detector_table[] = {0, 1, 2, 4, 8, 16, 32, 64};
+
 struct admv1014_state {
 	struct spi_device	*spi;
 	struct clk		*clkin;
@@ -290,6 +292,13 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 		else
 			*val = FIELD_GET(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, data);
 
+	case IIO_CHAN_INFO_SCALE:
+		ret = admv1014_spi_read(st, ADMV1014_REG_MIXER, &data);
+		if (ret)
+			return ret;
+
+		*val = FIELD_GET(ADMV1014_DET_PROG_MSK, data);
+		return IIO_VAL_INT;
 		return IIO_VAL_INT;
 	default:
 		return -EINVAL;
@@ -321,6 +330,10 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 			return admv1014_spi_update_bits(st, ADMV1014_REG_LO_AMP_PHASE_ADJUST1,
 							ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK,
 							FIELD_PREP(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, val));
+	case IIO_CHAN_INFO_SCALE:
+		return admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
+						ADMV1014_DET_PROG_MSK,
+						FIELD_PREP(ADMV1014_DET_PROG_MSK, val));
 static ssize_t admv1014_read(struct iio_dev *indio_dev,
 			     uintptr_t private,
 			     const struct iio_chan_spec *chan,
@@ -407,6 +420,19 @@ static ssize_t admv1014_write(struct iio_dev *indio_dev,
 
 	return ret ? ret : len;
 }
+
+static int admv1014_read_avail(struct iio_dev *indio_dev,
+			       struct iio_chan_spec const *chan,
+			       const int **vals, int *type, int *length,
+			       long info)
+{
+	switch (info) {
+	case IIO_CHAN_INFO_SCALE:
+		*vals = detector_table;
+		*type = IIO_VAL_INT;
+		*length = ARRAY_SIZE(detector_table);
+
+		return IIO_AVAIL_LIST;
 	default:
 		return -EINVAL;
 	}
@@ -431,6 +457,7 @@ static int admv1014_reg_access(struct iio_dev *indio_dev,
 static const struct iio_info admv1014_info = {
 	.read_raw = admv1014_read_raw,
 	.write_raw = admv1014_write_raw,
+	.read_avail = &admv1014_read_avail,
 	.debugfs_reg_access = &admv1014_reg_access,
 };
 
@@ -483,6 +510,14 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.ext_info = _admv1014_ext_info					\
 	}
 
+#define ADMV1014_CHAN_DETECTOR(_channel) {				\
+	.type = IIO_POWER,						\
+	.modified = 1,							\
+	.output = 0,							\
+	.indexed = 1,							\
+	.channel = _channel,						\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),			\
+	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE)	\
 	}
 
 static const struct iio_chan_spec admv1014_channels[] = {
@@ -490,6 +525,7 @@ static const struct iio_chan_spec admv1014_channels[] = {
 	ADMV1014_CHAN(0, Q),
 	ADMV1014_CHAN_GAIN(0, I, admv1014_ext_info),
 	ADMV1014_CHAN_GAIN(0, Q, admv1014_ext_info),
+	ADMV1014_CHAN_DETECTOR(0)
 };
 
 static int admv1014_init(struct admv1014_state *st)
