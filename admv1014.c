@@ -122,7 +122,6 @@ struct admv1014_state {
 	unsigned int		input_mode;
 	unsigned int		quad_se_mode;
 	unsigned int		p1db_comp;
-	unsigned int		det_prog;
 	unsigned int		bb_amp_gain_ctrl;
 	bool			det_en;
 	u8			data[3] ____cacheline_aligned;
@@ -594,14 +593,6 @@ static int admv1014_init(struct admv1014_state *st)
 		return ret;
 	}
 
-	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
-					 ADMV1014_DET_PROG_MSK,
-					 FIELD_PREP(ADMV1014_DET_PROG_MSK, st->det_prog));
-	if (ret) {
-		dev_err(&spi->dev, "Writing Digital Rx Detector failed.\n");
-		return ret;
-	}
-
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_BB_AMP_AGC,
 					 ADMV1014_BB_AMP_GAIN_CTRL_MSK,
 					 FIELD_PREP(ADMV1014_BB_AMP_GAIN_CTRL_MSK,
@@ -703,10 +694,6 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 		st->quad_se_mode = ADMV1014_SE_MODE_NEG;
 	else
 		return -EINVAL;
-
-	ret = device_property_read_u32(&spi->dev, "adi,det-prog", &st->det_prog);
-	if (ret)
-		st->det_prog = 8;
 
 	ret = device_property_read_u32(&spi->dev, "adi,bb-amp-gain-ctrl", &st->bb_amp_gain_ctrl);
 	if (ret)

@@ -57,12 +57,6 @@ properties:
       diff - Differential Mode.
     enum: [se-neg, se-pos, diff]
 
-  adi,det-prog:
-    description:
-      Digital Rx Detector Program.
-    $ref: /schemas/types.yaml#/definitions/uint32
-    enum: [1, 2, 4, 8, 16, 32, 64]
-
   adi,bb-amp-gain-ctrl:
     description:
       Baseband Amp Gain control.
@@ -96,7 +90,6 @@ examples:
         adi,quad-se-mode = "diff";
         adi,detector-enable;
         adi,p1db-comp-enable;
-        adi,det-prog = <1>;
         adi,bb-amp-gain-ctrl = <0>;
       };
     };
