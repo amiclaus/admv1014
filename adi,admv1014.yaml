@@ -39,9 +39,17 @@ properties:
     description:
       Analog voltage regulator.
 
+  adi,input-mode:
+    description:
+      Select the input mode.
+      iq - in-phase quadrature (I/Q) input
+      if - complex intermediate frequency (IF) input
+    enum: [iq, if]
+
   adi,detector-enable:
     description:
-      Digital Rx Detector Enable.
+      Digital Rx Detector Enable. The Square Law Detector output is
+      available at output pin VDET.
     type: boolean
 
   adi,p1db-comp-enable:
