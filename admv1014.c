@@ -95,6 +95,11 @@
 #define ADMV1014_REG_DATA_MSK			GENMASK(16, 1)
 
 enum {
+	ADMV1014_IQ_MODE,
+	ADMV1014_IF_MODE
+};
+
+enum {
 	ADMV1014_SE_MODE_POS = 6,
 	ADMV1014_SE_MODE_NEG = 9,
 	ADMV1014_SE_MODE_DIFF = 12
@@ -107,6 +112,7 @@ struct admv1014_state {
 	/* Protect against concurrent accesses to the device */
 	struct mutex		lock;
 	struct regulator	*reg;
+	unsigned int		input_mode;
 	unsigned int		quad_se_mode;
 	unsigned int		p1db_comp;
 	unsigned int		det_prog;
@@ -504,9 +510,13 @@ static int admv1014_init(struct admv1014_state *st)
 	}
 
 	enable_reg_msk = ADMV1014_P1DB_COMPENSATION_MSK |
+			 ADMV1014_IF_AMP_PD_MSK |
+			 ADMV1014_BB_AMP_PD_MSK |
 			 ADMV1014_DET_EN_MSK;
 
 	enable_reg = FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, st->p1db_comp) |
+		     FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, !(st->input_mode)) |
+		     FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, st->input_mode) |
 		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en);
 
 	return __admv1014_spi_update_bits(st, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
@@ -555,6 +565,17 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 	st->p1db_comp = device_property_read_bool(&spi->dev, "adi,p1db-comp-enable");
 	if (st->p1db_comp)
 		st->p1db_comp = 3;
+
+	ret = device_property_read_string(&spi->dev, "adi,input-mode", &str);
+	if (ret)
+		st->input_mode = ADMV1014_IQ_MODE;
+
+	if (!strcmp(str, "iq"))
+		st->input_mode = ADMV1014_IQ_MODE;
+	else if (!strcmp(str, "if"))
+		st->input_mode = ADMV1014_IF_MODE;
+	else
+		return -EINVAL;
 
 	ret = device_property_read_string(&spi->dev, "adi,quad-se-mode", &str);
 	if (ret)
