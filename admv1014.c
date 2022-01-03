@@ -114,7 +114,7 @@ struct admv1014_state {
 	struct spi_device	*spi;
 	struct clk		*clkin;
 	struct notifier_block	nb;
-	/* Protect against concurrent accesses to the device */
+	/* Protect against concurrent accesses to the device and to data*/
 	struct mutex		lock;
 	struct regulator	*reg;
 	unsigned int		input_mode;
