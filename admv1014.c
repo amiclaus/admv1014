@@ -105,6 +105,11 @@ enum {
 	ADMV1014_SE_MODE_DIFF = 12
 };
 
+enum {
+	ADMV1014_GAIN_COARSE,
+	ADMV1014_GAIN_FINE,
+};
+
 struct admv1014_state {
 	struct spi_device	*spi;
 	struct clk		*clkin;
@@ -264,34 +269,6 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 	int ret;
 
 	switch (info) {
-	case IIO_CHAN_INFO_HARDWAREGAIN:
-		if (chan->channel2 == IIO_MOD_I) {
-			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
-			if (ret)
-				return ret;
-
-			*val = (data & ADMV1014_IF_AMP_COARSE_GAIN_I_MSK) >> 8;
-			*val2 = data & ADMV1014_IF_AMP_FINE_GAIN_I_MSK;
-		} else {
-			mutex_lock(&st->lock);
-
-			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP_BB_AMP, &data);
-			if (ret) {
-				mutex_unlock(&st->lock);
-				return ret;
-			}
-
-			*val = (data & ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK) >> 12;
-
-			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
-			mutex_unlock(&st->lock);
-			if (ret)
-				return ret;
-
-			*val2 = (data & ADMV1014_IF_AMP_FINE_GAIN_Q_MSK) >> 4;
-		}
-
-		return IIO_VAL_INT_MULTIPLE;
 	case IIO_CHAN_INFO_OFFSET:
 		ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP_BB_AMP, &data);
 		if (ret)
@@ -324,37 +301,8 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 			      int val, int val2, long info)
 {
 	struct admv1014_state *st = iio_priv(indio_dev);
-	int ret;
 
 	switch (info) {
-	case IIO_CHAN_INFO_HARDWAREGAIN:
-		val = clamp_val(val, 0, 15);
-		val2 /= 100000;
-		val2 = clamp_val(val2, 0, 9);
-
-		if (chan->channel2 == IIO_MOD_I) {
-			ret = admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP,
-						       ADMV1014_IF_AMP_COARSE_GAIN_I_MSK |
-						       ADMV1014_IF_AMP_FINE_GAIN_I_MSK,
-						       FIELD_PREP(ADMV1014_IF_AMP_COARSE_GAIN_I_MSK, val) |
-						       FIELD_PREP(ADMV1014_IF_AMP_FINE_GAIN_I_MSK, val2));
-		} else {
-			mutex_lock(&st->lock);
-			ret = __admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP_BB_AMP,
-							 ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK,
-							 FIELD_PREP(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, val));
-			if (ret) {
-				mutex_unlock(&st->lock);
-				return ret;
-			}
-
-			ret = __admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP,
-							 ADMV1014_IF_AMP_FINE_GAIN_Q_MSK,
-							 FIELD_PREP(ADMV1014_IF_AMP_FINE_GAIN_Q_MSK, val2));
-			mutex_unlock(&st->lock);
-		}
-
-		return ret;
 	case IIO_CHAN_INFO_OFFSET:
 		if (chan->channel2 == IIO_MOD_I)
 			return admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP_BB_AMP,
@@ -373,6 +321,92 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 			return admv1014_spi_update_bits(st, ADMV1014_REG_LO_AMP_PHASE_ADJUST1,
 							ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK,
 							FIELD_PREP(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, val));
+static ssize_t admv1014_read(struct iio_dev *indio_dev,
+			     uintptr_t private,
+			     const struct iio_chan_spec *chan,
+			     char *buf)
+{
+	struct admv1014_state *st = iio_priv(indio_dev);
+	unsigned int data;
+	int ret;
+
+	switch ((u32)private) {
+	case ADMV1014_GAIN_COARSE:
+		if (chan->channel2 == IIO_MOD_I) {
+			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
+			if (ret)
+				return ret;
+
+			data = FIELD_GET(ADMV1014_IF_AMP_COARSE_GAIN_I_MSK, data);
+		} else {
+			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP_BB_AMP, &data);
+			if (ret)
+				return ret;
+
+			data = FIELD_GET(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, data);
+		}
+		break;
+	case ADMV1014_GAIN_FINE:
+		ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
+		if (ret)
+			return ret;
+
+		if (chan->channel2 == IIO_MOD_I)
+			data = FIELD_GET(ADMV1014_IF_AMP_FINE_GAIN_I_MSK, data);
+		else
+			data = FIELD_GET(ADMV1014_IF_AMP_FINE_GAIN_Q_MSK, data);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return sysfs_emit(buf, "%u\n", data);
+}
+
+static ssize_t admv1014_write(struct iio_dev *indio_dev,
+			      uintptr_t private,
+			      const struct iio_chan_spec *chan,
+			      const char *buf, size_t len)
+{
+	struct admv1014_state *st = iio_priv(indio_dev);
+	unsigned int data, addr, msk;
+	int ret;
+
+	ret = kstrtou32(buf, 10, &data);
+	if (ret)
+		return ret;
+
+	switch ((u32)private) {
+	case ADMV1014_GAIN_COARSE:
+		if (chan->channel2 == IIO_MOD_I) {
+			addr = ADMV1014_REG_IF_AMP;
+			msk = ADMV1014_IF_AMP_COARSE_GAIN_I_MSK;
+			data = FIELD_PREP(ADMV1014_IF_AMP_COARSE_GAIN_I_MSK, data);
+		} else {
+			addr = ADMV1014_REG_IF_AMP_BB_AMP;
+			msk = ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK;
+			data = FIELD_PREP(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, data);
+		}
+		break;
+	case ADMV1014_GAIN_FINE:
+		addr = ADMV1014_REG_IF_AMP;
+
+		if (chan->channel2 == IIO_MOD_I) {
+			msk = ADMV1014_IF_AMP_FINE_GAIN_I_MSK;
+			data = FIELD_PREP(ADMV1014_IF_AMP_FINE_GAIN_I_MSK, data);
+		} else {
+			msk = ADMV1014_IF_AMP_FINE_GAIN_Q_MSK;
+			data = FIELD_PREP(ADMV1014_IF_AMP_FINE_GAIN_Q_MSK, data);
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = admv1014_spi_update_bits(st, addr, msk, data);
+
+	return ret ? ret : len;
+}
 	default:
 		return -EINVAL;
 	}
@@ -425,11 +459,37 @@ static int admv1014_freq_change(struct notifier_block *nb, unsigned long action,
 	.info_mask_separate = BIT(IIO_CHAN_INFO_HARDWAREGAIN) | \
 		BIT(IIO_CHAN_INFO_PHASE) |			\
 		BIT(IIO_CHAN_INFO_OFFSET)			\
+#define _ADMV1014_EXT_INFO(_name, _shared, _ident) { \
+		.name = _name, \
+		.read = admv1014_read, \
+		.write = admv1014_write, \
+		.private = _ident, \
+		.shared = _shared, \
+}
+
+static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
+	_ADMV1014_EXT_INFO("gain_coarse", IIO_SEPARATE, ADMV1014_GAIN_COARSE),
+	_ADMV1014_EXT_INFO("gain_fine", IIO_SEPARATE, ADMV1014_GAIN_FINE),
+	{ },
+};
+
+#define ADMV1014_CHAN_GAIN(_channel, rf_comp, _admv1014_ext_info) {	\
+	.type = IIO_ALTVOLTAGE,						\
+	.modified = 1,							\
+	.output = 0,							\
+	.indexed = 1,							\
+	.channel2 = IIO_MOD_##rf_comp,					\
+	.channel = _channel,						\
+	.ext_info = _admv1014_ext_info					\
+	}
+
 	}
 
 static const struct iio_chan_spec admv1014_channels[] = {
 	ADMV1014_CHAN(0, I),
 	ADMV1014_CHAN(0, Q),
+	ADMV1014_CHAN_GAIN(0, I, admv1014_ext_info),
+	ADMV1014_CHAN_GAIN(0, Q, admv1014_ext_info),
 };
 
 static int admv1014_init(struct admv1014_state *st)
