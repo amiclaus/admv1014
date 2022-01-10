@@ -545,11 +545,67 @@ static const struct iio_chan_spec admv1014_channels[] = {
 	}
 };
 
+static void admv1014_clk_disable(void *data)
+{
+	clk_disable_unprepare(data);
+}
+
+static void admv1014_reg_disable(void *data)
+{
+	regulator_disable(data);
+}
+
+static void admv1014_powerdown(void *data)
+{
+	unsigned int enable_reg, enable_reg_msk;
+
+	/* Disable all components in the Enable Register */
+	enable_reg_msk = ADMV1014_IBIAS_PD_MSK |
+			ADMV1014_IF_AMP_PD_MSK |
+			ADMV1014_QUAD_BG_PD_MSK |
+			ADMV1014_BB_AMP_PD_MSK |
+			ADMV1014_QUAD_IBIAS_PD_MSK |
+			ADMV1014_BG_PD_MSK;
+
+	enable_reg = FIELD_PREP(ADMV1014_IBIAS_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_QUAD_BG_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_QUAD_IBIAS_PD_MSK, 1) |
+			FIELD_PREP(ADMV1014_BG_PD_MSK, 1);
+
+	admv1014_spi_update_bits(data, ADMV1014_REG_ENABLE,
+				 enable_reg_msk, enable_reg);
+}
+
 static int admv1014_init(struct admv1014_state *st)
 {
 	int ret;
 	unsigned int chip_id, enable_reg, enable_reg_msk;
 	struct spi_device *spi = st->spi;
+
+	ret = regulator_enable(st->reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable specified Common-Mode Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->reg);
+	if (ret)
+		return ret;
+
+	ret = clk_prepare_enable(st->clkin);
+	if (ret)
+		return ret;
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_clk_disable, st->clkin);
+	if (ret)
+		return ret;
+
+	st->nb.notifier_call = admv1014_freq_change;
+	ret = devm_clk_notifier_register(&spi->dev, st->clkin, &st->nb);
+	if (ret)
+		return ret;
 
 	/* Perform a software reset */
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_SPI_CONTROL,
@@ -618,39 +674,6 @@ static int admv1014_init(struct admv1014_state *st)
 	return __admv1014_spi_update_bits(st, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
 }
 
-static void admv1014_clk_disable(void *data)
-{
-	clk_disable_unprepare(data);
-}
-
-static void admv1014_reg_disable(void *data)
-{
-	regulator_disable(data);
-}
-
-static void admv1014_powerdown(void *data)
-{
-	unsigned int enable_reg, enable_reg_msk;
-
-	/* Disable all components in the Enable Register */
-	enable_reg_msk = ADMV1014_IBIAS_PD_MSK |
-			ADMV1014_IF_AMP_PD_MSK |
-			ADMV1014_QUAD_BG_PD_MSK |
-			ADMV1014_BB_AMP_PD_MSK |
-			ADMV1014_QUAD_IBIAS_PD_MSK |
-			ADMV1014_BG_PD_MSK;
-
-	enable_reg = FIELD_PREP(ADMV1014_IBIAS_PD_MSK, 1) |
-			FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, 1) |
-			FIELD_PREP(ADMV1014_QUAD_BG_PD_MSK, 1) |
-			FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, 1) |
-			FIELD_PREP(ADMV1014_QUAD_IBIAS_PD_MSK, 1) |
-			FIELD_PREP(ADMV1014_BG_PD_MSK, 1);
-
-	admv1014_spi_update_bits(data, ADMV1014_REG_ENABLE,
-				 enable_reg_msk, enable_reg);
-}
-
 static int admv1014_properties_parse(struct admv1014_state *st)
 {
 	const char *str;
@@ -715,29 +738,6 @@ static int admv1014_probe(struct spi_device *spi)
 	st->spi = spi;
 
 	ret = admv1014_properties_parse(st);
-	if (ret)
-		return ret;
-
-	ret = regulator_enable(st->reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable specified Common-Mode Voltage!\n");
-		return ret;
-	}
-
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->reg);
-	if (ret)
-		return ret;
-
-	ret = clk_prepare_enable(st->clkin);
-	if (ret)
-		return ret;
-
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_clk_disable, st->clkin);
-	if (ret)
-		return ret;
-
-	st->nb.notifier_call = admv1014_freq_change;
-	ret = devm_clk_notifier_register(&spi->dev, st->clkin, &st->nb);
 	if (ret)
 		return ret;
 
