@@ -119,6 +119,14 @@ struct admv1014_state {
 	/* Protect against concurrent accesses to the device and to data*/
 	struct mutex		lock;
 	struct regulator	*vcm_reg;
+	struct regulator	*vcc_if_bb_reg;
+	struct regulator	*vcc_vga_reg;
+	struct regulator	*vcc_vva_reg;
+	struct regulator	*vcc_lna_3p3_reg;
+	struct regulator	*vcc_lna_1p5_reg;
+	struct regulator	*vcc_bg_reg;
+	struct regulator	*vcc_quad_reg;
+	struct regulator	*vcc_mixer_reg;
 	unsigned int		input_mode;
 	unsigned int		quad_se_mode;
 	unsigned int		p1db_comp;
@@ -586,11 +594,131 @@ static int admv1014_init(struct admv1014_state *st)
 
 	ret = regulator_enable(st->vcm_reg);
 	if (ret) {
-		dev_err(&spi->dev, "Failed to enable specified Common-Mode Voltage!\n");
+		dev_err(&spi->dev, "Failed to enable Common-Mode Voltage!\n");
 		return ret;
 	}
 
 	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcm_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_if_bb_reg) != 3300000) {
+		dev_err(&spi->dev, "Invalid BB and IF supply voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_if_bb_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable BB and IF Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_if_bb_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_vga_reg) != 3300000) {
+		dev_err(&spi->dev, "Invalid RF Amplifier supply voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_vga_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable RF Amplifier Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vga_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_vva_reg) != 1800000) {
+		dev_err(&spi->dev, "Invalid VVA Control Circuit voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_vva_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable VVA Control Circuit Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vva_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_lna_3p3_reg) != 3300000) {
+		dev_err(&spi->dev, "Invalid Low Noise Amplifier 3.3V voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_lna_3p3_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 3.3V Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_3p3_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_lna_1p5_reg) != 1500000) {
+		dev_err(&spi->dev, "Invalid BB and Low Noise Amplifier 1.5V voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_lna_1p5_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 1.5V Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_1p5_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_bg_reg) != 3300000) {
+		dev_err(&spi->dev, "Invalid Band Gap Circuit voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_bg_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable Band Gap Circuit Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_bg_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_quad_reg) != 3300000) {
+		dev_err(&spi->dev, "Invalid BB and Quadruple voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_quad_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable Quadruple Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_quad_reg);
+	if (ret)
+		return ret;
+
+	if (regulator_get_voltage(st->vcc_mixer_reg) != 3300000) {
+		dev_err(&spi->dev, "Invalid Mixer supply voltage value!\n");
+		return -EINVAL;
+	}
+
+	ret = regulator_enable(st->vcc_mixer_reg);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to enable Mixer Voltage!\n");
+		return ret;
+	}
+
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_mixer_reg);
 	if (ret)
 		return ret;
 
@@ -709,6 +837,46 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 	if (IS_ERR(st->vcm_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcm_reg),
 				     "failed to get the common-mode voltage\n");
+
+	st->vcc_if_bb_reg = devm_regulator_get(&spi->dev, "vcc-if-bb");
+	if (IS_ERR(st->vcc_if_bb_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_if_bb_reg),
+				     "failed to get the BB and IF supply\n");
+
+	st->vcc_vga_reg = devm_regulator_get(&spi->dev, "vcc-vga");
+	if (IS_ERR(st->vcc_vga_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_vga_reg),
+				     "failed to get the RF Amplifier supply\n");
+
+	st->vcc_vva_reg = devm_regulator_get(&spi->dev, "vcc-vva");
+	if (IS_ERR(st->vcc_vva_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_vva_reg),
+				     "failed to get the VVA Control Circuit supply\n");
+
+	st->vcc_lna_3p3_reg = devm_regulator_get(&spi->dev, "vcc-lna-3p3");
+	if (IS_ERR(st->vcc_lna_3p3_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_lna_3p3_reg),
+				     "failed to get the Low Noise Amplifier 3.3V supply\n");
+
+	st->vcc_lna_1p5_reg = devm_regulator_get(&spi->dev, "vcc-lna-1p5");
+	if (IS_ERR(st->vcc_lna_1p5_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_lna_1p5_reg),
+				     "failed to get the Low Noise Amplifier 1.5V supply\n");
+
+	st->vcc_bg_reg = devm_regulator_get(&spi->dev, "vcc-bg");
+	if (IS_ERR(st->vcc_lna_1p5_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_bg_reg),
+				     "failed to get the Band Gap Circuit supply\n");
+
+	st->vcc_quad_reg = devm_regulator_get(&spi->dev, "vcc-quad");
+	if (IS_ERR(st->vcc_quad_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_quad_reg),
+				     "failed to get the Quadruple supply\n");
+
+	st->vcc_mixer_reg = devm_regulator_get(&spi->dev, "vcc-quad");
+	if (IS_ERR(st->vcc_quad_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_mixer_reg),
+				     "failed to get the Mixer supply\n");
 
 	st->clkin = devm_clk_get(&spi->dev, "lo_in");
 	if (IS_ERR(st->clkin))
