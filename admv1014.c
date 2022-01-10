@@ -681,7 +681,7 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 
 	st->det_en = device_property_read_bool(&spi->dev, "adi,detector-enable");
 
-	st->p1db_comp = device_property_read_bool(&spi->dev, "adi,p1db-comp-enable");
+	st->p1db_comp = device_property_read_bool(&spi->dev, "adi,p1db-compensation-enable");
 
 	str = "iq";
 	device_property_read_string(&spi->dev, "adi,input-mode", &str);
