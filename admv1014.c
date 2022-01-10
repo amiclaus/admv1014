@@ -529,22 +529,20 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.ext_info = _admv1014_ext_info					\
 	}
 
-#define ADMV1014_CHAN_DETECTOR(_channel) {				\
-	.type = IIO_POWER,						\
-	.modified = 1,							\
-	.output = 0,							\
-	.indexed = 1,							\
-	.channel = _channel,						\
-	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),			\
-	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE)	\
-	}
-
 static const struct iio_chan_spec admv1014_channels[] = {
 	ADMV1014_CHAN(0, I),
 	ADMV1014_CHAN(0, Q),
 	ADMV1014_CHAN_GAIN(0, I, admv1014_ext_info),
 	ADMV1014_CHAN_GAIN(0, Q, admv1014_ext_info),
-	ADMV1014_CHAN_DETECTOR(0)
+	{
+		.type = IIO_POWER,
+		.modified = 1,
+		.output = 0,
+		.indexed = 1,
+		.channel = 0,
+		.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),
+		.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE)
+	}
 };
 
 static int admv1014_init(struct admv1014_state *st)
