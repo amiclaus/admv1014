@@ -647,7 +647,8 @@ static void admv1014_powerdown(void *data)
 			FIELD_PREP(ADMV1014_QUAD_IBIAS_PD_MSK, 1) |
 			FIELD_PREP(ADMV1014_BG_PD_MSK, 1);
 
-	admv1014_spi_update_bits(data, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+	admv1014_spi_update_bits(data, ADMV1014_REG_ENABLE,
+				 enable_reg_msk, enable_reg);
 }
 
 static int admv1014_properties_parse(struct admv1014_state *st)
