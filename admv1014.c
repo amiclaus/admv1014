@@ -233,28 +233,30 @@ static int admv1014_update_quad_filters(struct admv1014_state *st)
 
 static int admv1014_update_vcm_settings(struct admv1014_state *st)
 {
-	unsigned int i, vcm_mv, vcm_comp, bb_sw_high_low_cm;
+	unsigned int i, vcm_mv, vcm_comp, bb_sw_hl_cm;
 	int ret;
 
 	vcm_mv = regulator_get_voltage(st->reg) / 1000;
 	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
 		vcm_comp = 1050 + (i * 50) + (i / 8 * 50);
-		if (vcm_mv == vcm_comp) {
-			ret = __admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
-							 ADMV1014_MIXER_VGATE_MSK,
-							 FIELD_PREP(ADMV1014_MIXER_VGATE_MSK,
-								    mixer_vgate_table[i]));
-			if (ret)
-				return ret;
+		if (vcm_mv != vcm_comp)
+			continue;
 
-			bb_sw_high_low_cm = ~(i / 8);
+		ret = __admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
+						 ADMV1014_MIXER_VGATE_MSK,
+						 FIELD_PREP(ADMV1014_MIXER_VGATE_MSK,
+							    mixer_vgate_table[i]));
+		if (ret)
+			return ret;
 
-			return __admv1014_spi_update_bits(st, ADMV1014_REG_BB_AMP_AGC,
-							  ADMV1014_BB_AMP_REF_GEN_MSK |
-							  ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK,
-							  FIELD_PREP(ADMV1014_BB_AMP_REF_GEN_MSK, i) |
-							  FIELD_PREP(ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK, bb_sw_high_low_cm));
-		}
+		bb_sw_hl_cm = ~(i / 8);
+		bb_sw_hl_cm = FIELD_PREP(ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK, bb_sw_hl_cm);
+
+		return __admv1014_spi_update_bits(st, ADMV1014_REG_BB_AMP_AGC,
+						  ADMV1014_BB_AMP_REF_GEN_MSK |
+						  ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK,
+						  FIELD_PREP(ADMV1014_BB_AMP_REF_GEN_MSK, i) |
+						  bb_sw_hl_cm);
 	}
 
 	return -EINVAL;
