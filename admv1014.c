@@ -653,7 +653,6 @@ static void admv1014_powerdown(void *data)
 
 static int admv1014_properties_parse(struct admv1014_state *st)
 {
-	int ret;
 	const char *str;
 	struct spi_device *spi = st->spi;
 
@@ -661,9 +660,8 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 
 	st->p1db_comp = device_property_read_bool(&spi->dev, "adi,p1db-comp-enable");
 
-	ret = device_property_read_string(&spi->dev, "adi,input-mode", &str);
-	if (ret)
-		st->input_mode = ADMV1014_IQ_MODE;
+	str = "iq";
+	device_property_read_string(&spi->dev, "adi,input-mode", &str);
 
 	if (!strcmp(str, "iq"))
 		st->input_mode = ADMV1014_IQ_MODE;
@@ -672,9 +670,8 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 	else
 		return -EINVAL;
 
-	ret = device_property_read_string(&spi->dev, "adi,quad-se-mode", &str);
-	if (ret)
-		st->quad_se_mode = ADMV1014_SE_MODE_DIFF;
+	str = "diff";
+	device_property_read_string(&spi->dev, "adi,quad-se-mode", &str);
 
 	if (!strcmp(str, "diff"))
 		st->quad_se_mode = ADMV1014_SE_MODE_DIFF;
