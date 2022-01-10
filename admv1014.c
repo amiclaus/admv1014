@@ -762,7 +762,7 @@ MODULE_DEVICE_TABLE(spi, admv1014_id);
 
 static const struct of_device_id admv1014_of_match[] = {
 	{ .compatible = "adi,admv1014" },
-	{},
+	{}
 };
 MODULE_DEVICE_TABLE(of, admv1014_of_match);
 
