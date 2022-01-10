@@ -27,17 +27,15 @@ properties:
     maximum: 1000000
 
   clocks:
-    description:
-      Definition of the external clock.
     minItems: 1
 
   clock-names:
     items:
       - const: lo_in
-
-  vcm-supply:
     description:
-      Analog voltage regulator.
+      Definition of the external clock that serves as input Local Oscillator.
+
+  vcm-supply: true
 
   adi,input-mode:
     description:
