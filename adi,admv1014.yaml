@@ -52,7 +52,7 @@ properties:
       available at output pin VDET.
     type: boolean
 
-  adi,p1db-comp-enable:
+  adi,p1db-compensation-enable:
     description:
       Turn on bits to optimize P1dB.
     type: boolean
@@ -91,7 +91,7 @@ examples:
         vcm-supply = <&vcm>;
         adi,quad-se-mode = "diff";
         adi,detector-enable;
-        adi,p1db-comp-enable;
+        adi,p1db-compensation-enable;
       };
     };
 ...
