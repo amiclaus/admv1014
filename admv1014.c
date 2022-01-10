@@ -610,7 +610,7 @@ static int admv1014_init(struct admv1014_state *st)
 			 ADMV1014_BB_AMP_PD_MSK |
 			 ADMV1014_DET_EN_MSK;
 
-	enable_reg = FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, st->p1db_comp) |
+	enable_reg = FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, st->p1db_comp ? 3 : 0) |
 		     FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, !(st->input_mode)) |
 		     FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, st->input_mode) |
 		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en);
@@ -659,8 +659,6 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 	st->det_en = device_property_read_bool(&spi->dev, "adi,detector-enable");
 
 	st->p1db_comp = device_property_read_bool(&spi->dev, "adi,p1db-comp-enable");
-	if (st->p1db_comp)
-		st->p1db_comp = 3;
 
 	ret = device_property_read_string(&spi->dev, "adi,input-mode", &str);
 	if (ret)
