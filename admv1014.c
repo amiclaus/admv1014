@@ -873,7 +873,7 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_quad_reg),
 				     "failed to get the Quadruple supply\n");
 
-	st->vcc_mixer_reg = devm_regulator_get(&spi->dev, "vcc-quad");
+	st->vcc_mixer_reg = devm_regulator_get(&spi->dev, "vcc-mixer");
 	if (IS_ERR(st->vcc_quad_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_mixer_reg),
 				     "failed to get the Mixer supply\n");
