@@ -316,27 +316,31 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 			      struct iio_chan_spec const *chan,
 			      int val, int val2, long info)
 {
+	int data;
+	unsigned int msk;
 	struct admv1014_state *st = iio_priv(indio_dev);
 
 	switch (info) {
 	case IIO_CHAN_INFO_OFFSET:
-		if (chan->channel2 == IIO_MOD_I)
-			return admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP_BB_AMP,
-							ADMV1014_BB_AMP_OFFSET_I_MSK,
-							FIELD_PREP(ADMV1014_BB_AMP_OFFSET_I_MSK, val));
-		else
-			return admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP_BB_AMP,
-							ADMV1014_BB_AMP_OFFSET_Q_MSK,
-							FIELD_PREP(ADMV1014_BB_AMP_OFFSET_Q_MSK, val));
+		if (chan->channel2 == IIO_MOD_I) {
+			msk = ADMV1014_BB_AMP_OFFSET_I_MSK;
+			data = FIELD_PREP(ADMV1014_BB_AMP_OFFSET_I_MSK, val);
+		} else {
+			msk = ADMV1014_BB_AMP_OFFSET_Q_MSK;
+			data = FIELD_PREP(ADMV1014_BB_AMP_OFFSET_Q_MSK, val);
+		}
+
+		return admv1014_spi_update_bits(st, ADMV1014_REG_IF_AMP_BB_AMP, msk, data);
 	case IIO_CHAN_INFO_PHASE:
-		if (chan->channel2 == IIO_MOD_I)
-			return admv1014_spi_update_bits(st, ADMV1014_REG_LO_AMP_PHASE_ADJUST1,
-							ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK,
-							FIELD_PREP(ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK, val));
-		else
-			return admv1014_spi_update_bits(st, ADMV1014_REG_LO_AMP_PHASE_ADJUST1,
-							ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK,
-							FIELD_PREP(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, val));
+		if (chan->channel2 == IIO_MOD_I) {
+			msk = ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK;
+			data = FIELD_PREP(ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK, val);
+		} else {
+			msk = ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK;
+			data = FIELD_PREP(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, val);
+		}
+
+		return admv1014_spi_update_bits(st, ADMV1014_REG_LO_AMP_PHASE_ADJUST1, msk, data);
 	case IIO_CHAN_INFO_SCALE:
 		return admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
 						ADMV1014_DET_PROG_MSK,
