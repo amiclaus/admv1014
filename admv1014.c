@@ -2,7 +2,7 @@
 /*
  * ADMV1014 driver
  *
- * Copyright 2021 Analog Devices Inc.
+ * Copyright 2022 Analog Devices Inc.
  */
 
 #include <linux/bitfield.h>
