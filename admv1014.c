@@ -464,14 +464,11 @@ static int admv1014_reg_access(struct iio_dev *indio_dev,
 			       unsigned int *read_val)
 {
 	struct admv1014_state *st = iio_priv(indio_dev);
-	int ret;
 
 	if (read_val)
-		ret = admv1014_spi_read(st, reg, read_val);
+		return admv1014_spi_read(st, reg, read_val);
 	else
-		ret = admv1014_spi_write(st, reg, write_val);
-
-	return ret;
+		return admv1014_spi_write(st, reg, write_val);
 }
 
 static const struct iio_info admv1014_info = {
