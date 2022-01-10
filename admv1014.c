@@ -118,7 +118,7 @@ struct admv1014_state {
 	struct notifier_block	nb;
 	/* Protect against concurrent accesses to the device and to data*/
 	struct mutex		lock;
-	struct regulator	*reg;
+	struct regulator	*vcm_reg;
 	unsigned int		input_mode;
 	unsigned int		quad_se_mode;
 	unsigned int		p1db_comp;
@@ -236,7 +236,7 @@ static int admv1014_update_vcm_settings(struct admv1014_state *st)
 	unsigned int i, vcm_mv, vcm_comp, bb_sw_hl_cm;
 	int ret;
 
-	vcm_mv = regulator_get_voltage(st->reg) / 1000;
+	vcm_mv = regulator_get_voltage(st->vcm_reg) / 1000;
 	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
 		vcm_comp = 1050 + (i * 50) + (i / 8 * 50);
 		if (vcm_mv != vcm_comp)
@@ -584,13 +584,13 @@ static int admv1014_init(struct admv1014_state *st)
 	unsigned int chip_id, enable_reg, enable_reg_msk;
 	struct spi_device *spi = st->spi;
 
-	ret = regulator_enable(st->reg);
+	ret = regulator_enable(st->vcm_reg);
 	if (ret) {
 		dev_err(&spi->dev, "Failed to enable specified Common-Mode Voltage!\n");
 		return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->reg);
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcm_reg);
 	if (ret)
 		return ret;
 
@@ -705,9 +705,9 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 	else
 		return -EINVAL;
 
-	st->reg = devm_regulator_get(&spi->dev, "vcm");
-	if (IS_ERR(st->reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->reg),
+	st->vcm_reg = devm_regulator_get(&spi->dev, "vcm");
+	if (IS_ERR(st->vcm_reg))
+		return dev_err_probe(&spi->dev, PTR_ERR(st->vcm_reg),
 				     "failed to get the common-mode voltage\n");
 
 	st->clkin = devm_clk_get(&spi->dev, "lo_in");
