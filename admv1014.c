@@ -106,8 +106,8 @@ enum {
 };
 
 enum {
-	ADMV1014_GAIN_COARSE,
-	ADMV1014_GAIN_FINE,
+	ADMV1014_CALIBSCALE_COARSE,
+	ADMV1014_CALIBSCALE_FINE,
 };
 
 static const int detector_table[] = {0, 1, 2, 4, 8, 16, 32, 64};
@@ -372,7 +372,7 @@ static ssize_t admv1014_read(struct iio_dev *indio_dev,
 	int ret;
 
 	switch ((u32)private) {
-	case ADMV1014_GAIN_COARSE:
+	case ADMV1014_CALIBSCALE_COARSE:
 		if (chan->channel2 == IIO_MOD_I) {
 			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
 			if (ret)
@@ -387,7 +387,7 @@ static ssize_t admv1014_read(struct iio_dev *indio_dev,
 			data = FIELD_GET(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, data);
 		}
 		break;
-	case ADMV1014_GAIN_FINE:
+	case ADMV1014_CALIBSCALE_FINE:
 		ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
 		if (ret)
 			return ret;
@@ -418,7 +418,7 @@ static ssize_t admv1014_write(struct iio_dev *indio_dev,
 		return ret;
 
 	switch ((u32)private) {
-	case ADMV1014_GAIN_COARSE:
+	case ADMV1014_CALIBSCALE_COARSE:
 		if (chan->channel2 == IIO_MOD_I) {
 			addr = ADMV1014_REG_IF_AMP;
 			msk = ADMV1014_IF_AMP_COARSE_GAIN_I_MSK;
@@ -429,7 +429,7 @@ static ssize_t admv1014_write(struct iio_dev *indio_dev,
 			data = FIELD_PREP(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, data);
 		}
 		break;
-	case ADMV1014_GAIN_FINE:
+	case ADMV1014_CALIBSCALE_FINE:
 		addr = ADMV1014_REG_IF_AMP;
 
 		if (chan->channel2 == IIO_MOD_I) {
@@ -510,8 +510,8 @@ static int admv1014_freq_change(struct notifier_block *nb, unsigned long action,
 }
 
 static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
-	_ADMV1014_EXT_INFO("gain_coarse", IIO_SEPARATE, ADMV1014_GAIN_COARSE),
-	_ADMV1014_EXT_INFO("gain_fine", IIO_SEPARATE, ADMV1014_GAIN_FINE),
+	_ADMV1014_EXT_INFO("calibscale_coarse", IIO_SEPARATE, ADMV1014_CALIBSCALE_COARSE),
+	_ADMV1014_EXT_INFO("calibscale_fine", IIO_SEPARATE, ADMV1014_CALIBSCALE_FINE),
 	{ },
 };
 
@@ -527,7 +527,7 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_HARDWAREGAIN)	\
 	}
 
-#define ADMV1014_CHAN_GAIN(_channel, rf_comp, _admv1014_ext_info) {	\
+#define ADMV1014_CHAN_CALIBSCALE(_channel, rf_comp, _admv1014_ext_info) {	\
 	.type = IIO_ALTVOLTAGE,						\
 	.modified = 1,							\
 	.output = 0,							\
@@ -540,8 +540,8 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 static const struct iio_chan_spec admv1014_channels[] = {
 	ADMV1014_CHAN(0, I),
 	ADMV1014_CHAN(0, Q),
-	ADMV1014_CHAN_GAIN(0, I, admv1014_ext_info),
-	ADMV1014_CHAN_GAIN(0, Q, admv1014_ext_info),
+	ADMV1014_CHAN_CALIBSCALE(0, I, admv1014_ext_info),
+	ADMV1014_CHAN_CALIBSCALE(0, Q, admv1014_ext_info),
 	{
 		.type = IIO_POWER,
 		.modified = 1,
