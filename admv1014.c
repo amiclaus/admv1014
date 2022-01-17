@@ -134,7 +134,8 @@ struct admv1014_state {
 	u8			data[3] ____cacheline_aligned;
 };
 
-static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114, 117, 118, 119, 120, 122, 123, 44, 45};
+static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114,
+					117, 118, 119, 120, 122, 123, 44, 45};
 
 static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 			       unsigned int *val)
