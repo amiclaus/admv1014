@@ -839,42 +839,42 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcm_reg),
 				     "failed to get the common-mode voltage\n");
 
-	st->vcc_if_bb_reg = devm_regulator_get(&spi->dev, "vcc-if-bb");
+	st->vcc_if_bb_reg = devm_regulator_get_optional(&spi->dev, "vcc-if-bb");
 	if (IS_ERR(st->vcc_if_bb_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_if_bb_reg),
 				     "failed to get the BB and IF supply\n");
 
-	st->vcc_vga_reg = devm_regulator_get(&spi->dev, "vcc-vga");
+	st->vcc_vga_reg = devm_regulator_get_optional(&spi->dev, "vcc-vga");
 	if (IS_ERR(st->vcc_vga_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_vga_reg),
 				     "failed to get the RF Amplifier supply\n");
 
-	st->vcc_vva_reg = devm_regulator_get(&spi->dev, "vcc-vva");
+	st->vcc_vva_reg = devm_regulator_get_optional(&spi->dev, "vcc-vva");
 	if (IS_ERR(st->vcc_vva_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_vva_reg),
 				     "failed to get the VVA Control Circuit supply\n");
 
-	st->vcc_lna_3p3_reg = devm_regulator_get(&spi->dev, "vcc-lna-3p3");
+	st->vcc_lna_3p3_reg = devm_regulator_get_optional(&spi->dev, "vcc-lna-3p3");
 	if (IS_ERR(st->vcc_lna_3p3_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_lna_3p3_reg),
 				     "failed to get the Low Noise Amplifier 3.3V supply\n");
 
-	st->vcc_lna_1p5_reg = devm_regulator_get(&spi->dev, "vcc-lna-1p5");
+	st->vcc_lna_1p5_reg = devm_regulator_get_optional(&spi->dev, "vcc-lna-1p5");
 	if (IS_ERR(st->vcc_lna_1p5_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_lna_1p5_reg),
 				     "failed to get the Low Noise Amplifier 1.5V supply\n");
 
-	st->vcc_bg_reg = devm_regulator_get(&spi->dev, "vcc-bg");
+	st->vcc_bg_reg = devm_regulator_get_optional(&spi->dev, "vcc-bg");
 	if (IS_ERR(st->vcc_lna_1p5_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_bg_reg),
 				     "failed to get the Band Gap Circuit supply\n");
 
-	st->vcc_quad_reg = devm_regulator_get(&spi->dev, "vcc-quad");
+	st->vcc_quad_reg = devm_regulator_get_optional(&spi->dev, "vcc-quad");
 	if (IS_ERR(st->vcc_quad_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_quad_reg),
 				     "failed to get the Quadruple supply\n");
 
-	st->vcc_mixer_reg = devm_regulator_get(&spi->dev, "vcc-mixer");
+	st->vcc_mixer_reg = devm_regulator_get_optional(&spi->dev, "vcc-mixer");
 	if (IS_ERR(st->vcc_quad_reg))
 		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_mixer_reg),
 				     "failed to get the Mixer supply\n");
