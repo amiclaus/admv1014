@@ -513,7 +513,7 @@ static int admv1014_freq_change(struct notifier_block *nb, unsigned long action,
 static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	_ADMV1014_EXT_INFO("calibscale_coarse", IIO_SEPARATE, ADMV1014_CALIBSCALE_COARSE),
 	_ADMV1014_EXT_INFO("calibscale_fine", IIO_SEPARATE, ADMV1014_CALIBSCALE_FINE),
-	{ },
+	{ }
 };
 
 #define ADMV1014_CHAN(_channel, rf_comp) {				\
