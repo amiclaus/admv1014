@@ -603,85 +603,101 @@ static int admv1014_init(struct admv1014_state *st)
 	if (ret)
 		return ret;
 
-	ret = regulator_enable(st->vcc_if_bb_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable BB and IF Voltage!\n");
-		return ret;
+	if (st->vcc_if_bb_reg) {
+		ret = regulator_enable(st->vcc_if_bb_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable BB and IF Voltage!\n");
+			return ret;
+		}
+
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_if_bb_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_if_bb_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_vga_reg) {
+		ret = regulator_enable(st->vcc_vga_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable RF Amplifier Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_vga_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable RF Amplifier Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vga_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vga_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_vva_reg) {
+		ret = regulator_enable(st->vcc_vva_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable VVA Control Circuit Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_vva_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable VVA Control Circuit Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vva_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vva_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_lna_3p3_reg) {
+		ret = regulator_enable(st->vcc_lna_3p3_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 3.3V Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_lna_3p3_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 3.3V Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_3p3_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_3p3_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_lna_1p5_reg) {
+		ret = regulator_enable(st->vcc_lna_1p5_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 1.5V Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_lna_1p5_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 1.5V Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_1p5_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_1p5_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_bg_reg) {
+		ret = regulator_enable(st->vcc_bg_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable Band Gap Circuit Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_bg_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable Band Gap Circuit Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_bg_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_bg_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_quad_reg) {
+		ret = regulator_enable(st->vcc_quad_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable Quadruple Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_quad_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable Quadruple Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_quad_reg);
+		if (ret)
+			return ret;
 	}
 
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_quad_reg);
-	if (ret)
-		return ret;
+	if (st->vcc_mixer_reg) {
+		ret = regulator_enable(st->vcc_mixer_reg);
+		if (ret) {
+			dev_err(&spi->dev, "Failed to enable Mixer Voltage!\n");
+			return ret;
+		}
 
-	ret = regulator_enable(st->vcc_mixer_reg);
-	if (ret) {
-		dev_err(&spi->dev, "Failed to enable Mixer Voltage!\n");
-		return ret;
+		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_mixer_reg);
+		if (ret)
+			return ret;
 	}
-
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_mixer_reg);
-	if (ret)
-		return ret;
 
 	ret = clk_prepare_enable(st->clkin);
 	if (ret)
