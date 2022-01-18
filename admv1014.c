@@ -712,6 +712,10 @@ static int admv1014_init(struct admv1014_state *st)
 	if (ret)
 		return ret;
 
+	ret = devm_add_action_or_reset(&spi->dev, admv1014_powerdown, st);
+	if (ret)
+		return ret;
+
 	/* Perform a software reset */
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_SPI_CONTROL,
 					 ADMV1014_SPI_SOFT_RESET_MSK,
@@ -889,10 +893,6 @@ static int admv1014_probe(struct spi_device *spi)
 	mutex_init(&st->lock);
 
 	ret = admv1014_init(st);
-	if (ret)
-		return ret;
-
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_powerdown, st);
 	if (ret)
 		return ret;
 
