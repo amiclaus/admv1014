@@ -21,3 +21,9 @@ KernelVersion:
 Contact:	linux-iio@vger.kernel.org
 Description:
 		Read/write value for the digital attenuator gain (IF_Q) with fine steps.
+
+What:		/sys/bus/iio/devices/iio:deviceX/in_altvoltage_calibscale
+KernelVersion:
+Contact:	linux-iio@vger.kernel.org
+Description:
+		Read/write value for the digital attenuator gain (I/Q).
