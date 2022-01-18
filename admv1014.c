@@ -733,13 +733,13 @@ static int admv1014_init(struct admv1014_state *st)
 		return ret;
 	}
 
-	ret = admv1014_spi_write(st, ADMV1014_REG_VVA_TEMP_COMP, 0x727C);
+	ret = __admv1014_spi_write(st, ADMV1014_REG_VVA_TEMP_COMP, 0x727C);
 	if (ret) {
 		dev_err(&spi->dev, "Writing default Temperature Compensation value failed.\n");
 		return ret;
 	}
 
-	ret = admv1014_spi_read(st, ADMV1014_REG_SPI_CONTROL, &chip_id);
+	ret = __admv1014_spi_read(st, ADMV1014_REG_SPI_CONTROL, &chip_id);
 	if (ret)
 		return ret;
 
