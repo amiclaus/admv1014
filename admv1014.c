@@ -309,7 +309,7 @@ static int admv1014_read_raw(struct iio_dev *indio_dev,
 
 		*val = FIELD_GET(ADMV1014_DET_PROG_MSK, data);
 		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_HARDWAREGAIN:
+	case IIO_CHAN_INFO_CALIBSCALE:
 		ret = admv1014_spi_read(st, ADMV1014_REG_BB_AMP_AGC, &data);
 		if (ret)
 			return ret;
@@ -354,7 +354,7 @@ static int admv1014_write_raw(struct iio_dev *indio_dev,
 		return admv1014_spi_update_bits(st, ADMV1014_REG_MIXER,
 						ADMV1014_DET_PROG_MSK,
 						FIELD_PREP(ADMV1014_DET_PROG_MSK, val));
-	case IIO_CHAN_INFO_HARDWAREGAIN:
+	case IIO_CHAN_INFO_CALIBSCALE:
 		return admv1014_spi_update_bits(st, ADMV1014_REG_BB_AMP_AGC,
 						ADMV1014_BB_AMP_GAIN_CTRL_MSK,
 						FIELD_PREP(ADMV1014_BB_AMP_GAIN_CTRL_MSK, val));
@@ -525,7 +525,7 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.channel = _channel,						\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_PHASE) |		\
 		BIT(IIO_CHAN_INFO_OFFSET),				\
-	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_HARDWAREGAIN)	\
+	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_CALIBSCALE)	\
 	}
 
 #define ADMV1014_CHAN_CALIBSCALE(_channel, rf_comp, _admv1014_ext_info) {	\
