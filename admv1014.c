@@ -516,7 +516,7 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	{ }
 };
 
-#define ADMV1014_CHAN(_channel, rf_comp) {				\
+#define ADMV1014_CHAN_IQ(_channel, rf_comp) {				\
 	.type = IIO_ALTVOLTAGE,						\
 	.modified = 1,							\
 	.output = 0,							\
@@ -528,30 +528,48 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_CALIBSCALE)	\
 	}
 
-#define ADMV1014_CHAN_CALIBSCALE(_channel, rf_comp, _admv1014_ext_info) {	\
+#define ADMV1014_CHAN_IF(_channel, rf_comp) {				\
 	.type = IIO_ALTVOLTAGE,						\
 	.modified = 1,							\
 	.output = 0,							\
 	.indexed = 1,							\
 	.channel2 = IIO_MOD_##rf_comp,					\
 	.channel = _channel,						\
-	.ext_info = _admv1014_ext_info					\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_PHASE) |		\
+		BIT(IIO_CHAN_INFO_OFFSET)				\
 	}
 
-static const struct iio_chan_spec admv1014_channels[] = {
-	ADMV1014_CHAN(0, I),
-	ADMV1014_CHAN(0, Q),
+#define ADMV1014_CHAN_POWER(_channel) {					\
+	.type = IIO_POWER,						\
+	.output = 0,							\
+	.indexed = 1,							\
+	.channel = _channel,						\
+	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),			\
+	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE)	\
+	}
+
+#define ADMV1014_CHAN_CALIBSCALE(_channel, rf_comp, _admv1014_ext_info) {	\
+	.type = IIO_ALTVOLTAGE,							\
+	.modified = 1,								\
+	.output = 0,								\
+	.indexed = 1,								\
+	.channel2 = IIO_MOD_##rf_comp,						\
+	.channel = _channel,							\
+	.ext_info = _admv1014_ext_info						\
+	}
+
+static const struct iio_chan_spec admv1014_channels_iq[] = {
+	ADMV1014_CHAN_IQ(0, I),
+	ADMV1014_CHAN_IQ(0, Q),
+	ADMV1014_CHAN_POWER(0)
+};
+
+static const struct iio_chan_spec admv1014_channels_if[] = {
+	ADMV1014_CHAN_IF(0, I),
+	ADMV1014_CHAN_IF(0, Q),
 	ADMV1014_CHAN_CALIBSCALE(0, I, admv1014_ext_info),
 	ADMV1014_CHAN_CALIBSCALE(0, Q, admv1014_ext_info),
-	{
-		.type = IIO_POWER,
-		.modified = 1,
-		.output = 0,
-		.indexed = 1,
-		.channel = 0,
-		.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),
-		.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE)
-	}
+	ADMV1014_CHAN_POWER(0)
 };
 
 static void admv1014_clk_disable(void *data)
@@ -879,16 +897,22 @@ static int admv1014_probe(struct spi_device *spi)
 
 	st = iio_priv(indio_dev);
 
-	indio_dev->info = &admv1014_info;
-	indio_dev->name = "admv1014";
-	indio_dev->channels = admv1014_channels;
-	indio_dev->num_channels = ARRAY_SIZE(admv1014_channels);
-
-	st->spi = spi;
-
 	ret = admv1014_properties_parse(st);
 	if (ret)
 		return ret;
+
+	indio_dev->info = &admv1014_info;
+	indio_dev->name = "admv1014";
+
+	if (st->input_mode == ADMV1014_IQ_MODE) {
+		indio_dev->channels = admv1014_channels_iq;
+		indio_dev->num_channels = ARRAY_SIZE(admv1014_channels_iq);
+	} else {
+		indio_dev->channels = admv1014_channels_if;
+		indio_dev->num_channels = ARRAY_SIZE(admv1014_channels_if);
+	}
+
+	st->spi = spi;
 
 	mutex_init(&st->lock);
 
