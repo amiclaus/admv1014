@@ -575,11 +575,6 @@ static void admv1014_clk_disable(void *data)
 	clk_disable_unprepare(data);
 }
 
-static void admv1014_reg_disable(void *data)
-{
-	regulator_disable(data);
-}
-
 static void admv1014_powerdown(void *data)
 {
 	unsigned int enable_reg, enable_reg_msk;
