@@ -121,6 +121,14 @@ examples:
         clocks = <&admv1014_lo>;
         clock-names = "lo_in";
         vcm-supply = <&vcm>;
+        vcc-if-bb-supply = <&vcc_if_bb>;
+        vcc-vga-supply = <&vcc_vga>;
+        vcc-vva-supply = <&vcc_vva>;
+        vcc-lna-3p3-supply = <&vcc_lna_3p3>;
+        vcc-lna-1p5-supply = <&vcc_lna_1p5>;
+        vcc-bg-supply = <&vcc_bg>;
+        vcc-quad-supply = <&vcc_quad>;
+        vcc-mixer-supply = <&vcc_mixer>;
         adi,quad-se-mode = "diff";
         adi,detector-enable;
         adi,p1db-compensation-enable;
