@@ -93,6 +93,7 @@
 #define ADMV1014_REG_ADDR_READ_MSK		GENMASK(6, 1)
 #define ADMV1014_REG_ADDR_WRITE_MSK		GENMASK(22, 17)
 #define ADMV1014_REG_DATA_MSK			GENMASK(16, 1)
+#define ADMV1014_NUM_REGULATORS			9
 
 enum {
 	ADMV1014_IQ_MODE,
@@ -113,25 +114,17 @@ enum {
 static const int detector_table[] = {0, 1, 2, 4, 8, 16, 32, 64};
 
 struct admv1014_state {
-	struct spi_device	*spi;
-	struct clk		*clkin;
-	struct notifier_block	nb;
+	struct spi_device		*spi;
+	struct clk			*clkin;
+	struct notifier_block		nb;
 	/* Protect against concurrent accesses to the device and to data*/
-	struct mutex		lock;
-	struct regulator	*vcm_reg;
-	struct regulator	*vcc_if_bb_reg;
-	struct regulator	*vcc_vga_reg;
-	struct regulator	*vcc_vva_reg;
-	struct regulator	*vcc_lna_3p3_reg;
-	struct regulator	*vcc_lna_1p5_reg;
-	struct regulator	*vcc_bg_reg;
-	struct regulator	*vcc_quad_reg;
-	struct regulator	*vcc_mixer_reg;
-	unsigned int		input_mode;
-	unsigned int		quad_se_mode;
-	unsigned int		p1db_comp;
-	bool			det_en;
-	u8			data[3] ____cacheline_aligned;
+	struct mutex			lock;
+	struct regulator_bulk_data	regulators[ADMV1014_NUM_REGULATORS];
+	unsigned int			input_mode;
+	unsigned int			quad_se_mode;
+	unsigned int			p1db_comp;
+	bool				det_en;
+	u8				data[3] ____cacheline_aligned;
 };
 
 static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114,
@@ -245,7 +238,7 @@ static int admv1014_update_vcm_settings(struct admv1014_state *st)
 	unsigned int i, vcm_mv, vcm_comp, bb_sw_hl_cm;
 	int ret;
 
-	vcm_mv = regulator_get_voltage(st->vcm_reg) / 1000;
+	vcm_mv = regulator_get_voltage(st->regulators[0].consumer) / 1000;
 	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
 		vcm_comp = 1050 + (i * 50) + (i / 8 * 50);
 		if (vcm_mv != vcm_comp)
@@ -487,6 +480,11 @@ static const struct iio_info admv1014_info = {
 	.debugfs_reg_access = &admv1014_reg_access,
 };
 
+static const char * const admv1014_reg_name[] = {
+	 "vcm", "vcc-if-bb", "vcc-vga", "vcc-vva", "vcc-lna-3p3", "vcc-lna-1p5",
+	 "vcc-bg", "vcc-quad", "vcc-mixer"
+};
+
 static int admv1014_freq_change(struct notifier_block *nb, unsigned long action, void *data)
 {
 	struct admv1014_state *st = container_of(nb, struct admv1014_state, nb);
@@ -611,128 +609,28 @@ static int admv1014_init(struct admv1014_state *st)
 	unsigned int chip_id, enable_reg, enable_reg_msk;
 	struct spi_device *spi = st->spi;
 
-	ret = regulator_enable(st->vcm_reg);
+	ret = regulator_bulk_enable(ADMV1014_NUM_REGULATORS, st->regulators);
 	if (ret) {
-		dev_err(&spi->dev, "Failed to enable Common-Mode Voltage!\n");
-		return ret;
-	}
-
-	ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcm_reg);
-	if (ret)
-		return ret;
-
-	if (st->vcc_if_bb_reg) {
-		ret = regulator_enable(st->vcc_if_bb_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable BB and IF Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_if_bb_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_vga_reg) {
-		ret = regulator_enable(st->vcc_vga_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable RF Amplifier Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vga_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_vva_reg) {
-		ret = regulator_enable(st->vcc_vva_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable VVA Control Circuit Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_vva_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_lna_3p3_reg) {
-		ret = regulator_enable(st->vcc_lna_3p3_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 3.3V Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_3p3_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_lna_1p5_reg) {
-		ret = regulator_enable(st->vcc_lna_1p5_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable Low Noise Amplifier 1.5V Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_lna_1p5_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_bg_reg) {
-		ret = regulator_enable(st->vcc_bg_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable Band Gap Circuit Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_bg_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_quad_reg) {
-		ret = regulator_enable(st->vcc_quad_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable Quadruple Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_quad_reg);
-		if (ret)
-			return ret;
-	}
-
-	if (st->vcc_mixer_reg) {
-		ret = regulator_enable(st->vcc_mixer_reg);
-		if (ret) {
-			dev_err(&spi->dev, "Failed to enable Mixer Voltage!\n");
-			return ret;
-		}
-
-		ret = devm_add_action_or_reset(&spi->dev, admv1014_reg_disable, st->vcc_mixer_reg);
-		if (ret)
-			return ret;
+		dev_err(&spi->dev, "Failed to enable regulators");
+		goto error_disable_reg;
 	}
 
 	ret = clk_prepare_enable(st->clkin);
 	if (ret)
-		return ret;
+		goto error_disable_reg;
 
 	ret = devm_add_action_or_reset(&spi->dev, admv1014_clk_disable, st->clkin);
 	if (ret)
-		return ret;
+		goto error_disable_reg;
 
 	st->nb.notifier_call = admv1014_freq_change;
 	ret = devm_clk_notifier_register(&spi->dev, st->clkin, &st->nb);
 	if (ret)
-		return ret;
+		goto error_disable_reg;
 
 	ret = devm_add_action_or_reset(&spi->dev, admv1014_powerdown, st);
 	if (ret)
-		return ret;
+		goto error_disable_reg;
 
 	/* Perform a software reset */
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_SPI_CONTROL,
@@ -740,7 +638,7 @@ static int admv1014_init(struct admv1014_state *st)
 					 FIELD_PREP(ADMV1014_SPI_SOFT_RESET_MSK, 1));
 	if (ret) {
 		dev_err(&spi->dev, "ADMV1014 SPI software reset failed.\n");
-		return ret;
+		goto error_disable_reg;
 	}
 
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_SPI_CONTROL,
@@ -748,23 +646,24 @@ static int admv1014_init(struct admv1014_state *st)
 					 FIELD_PREP(ADMV1014_SPI_SOFT_RESET_MSK, 0));
 	if (ret) {
 		dev_err(&spi->dev, "ADMV1014 SPI software reset disable failed.\n");
-		return ret;
+		goto error_disable_reg;
 	}
 
 	ret = __admv1014_spi_write(st, ADMV1014_REG_VVA_TEMP_COMP, 0x727C);
 	if (ret) {
 		dev_err(&spi->dev, "Writing default Temperature Compensation value failed.\n");
-		return ret;
+		goto error_disable_reg;
 	}
 
 	ret = __admv1014_spi_read(st, ADMV1014_REG_SPI_CONTROL, &chip_id);
 	if (ret)
-		return ret;
+		goto error_disable_reg;
 
 	chip_id = (chip_id & ADMV1014_CHIP_ID_MSK) >> 4;
 	if (chip_id != ADMV1014_CHIP_ID) {
 		dev_err(&spi->dev, "Invalid Chip ID.\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto error_disable_reg;
 	}
 
 	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_QUAD,
@@ -773,19 +672,19 @@ static int admv1014_init(struct admv1014_state *st)
 						    st->quad_se_mode));
 	if (ret) {
 		dev_err(&spi->dev, "Writing Quad SE Mode failed.\n");
-		return ret;
+		goto error_disable_reg;
 	}
 
 	ret = admv1014_update_quad_filters(st);
 	if (ret) {
 		dev_err(&spi->dev, "Update Quad Filters failed.\n");
-		return ret;
+		goto error_disable_reg;
 	}
 
 	ret = admv1014_update_vcm_settings(st);
 	if (ret) {
 		dev_err(&spi->dev, "Update VCM Settings failed.\n");
-		return ret;
+		goto error_disable_reg;
 	}
 
 	enable_reg_msk = ADMV1014_P1DB_COMPENSATION_MSK |
@@ -798,13 +697,24 @@ static int admv1014_init(struct admv1014_state *st)
 		     FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, st->input_mode) |
 		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en);
 
-	return __admv1014_spi_update_bits(st, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+	ret = __admv1014_spi_update_bits(st, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+	if (ret)
+		goto error_disable_reg;
+
+	return 0;
+
+error_disable_reg:
+	regulator_bulk_disable(ADMV1014_NUM_REGULATORS, st->regulators);
+
+	return ret;
 }
 
 static int admv1014_properties_parse(struct admv1014_state *st)
 {
 	const char *str;
+	unsigned int i;
 	struct spi_device *spi = st->spi;
+	int ret;
 
 	st->det_en = device_property_read_bool(&spi->dev, "adi,detector-enable");
 
@@ -832,50 +742,15 @@ static int admv1014_properties_parse(struct admv1014_state *st)
 	else
 		return -EINVAL;
 
-	st->vcm_reg = devm_regulator_get(&spi->dev, "vcm");
-	if (IS_ERR(st->vcm_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcm_reg),
-				     "failed to get the common-mode voltage\n");
+	for (i = 0; i < ADMV1014_NUM_REGULATORS; ++i)
+		st->regulators[i].supply = admv1014_reg_name[i];
 
-	st->vcc_if_bb_reg = devm_regulator_get_optional(&spi->dev, "vcc-if-bb");
-	if (IS_ERR(st->vcc_if_bb_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_if_bb_reg),
-				     "failed to get the BB and IF supply\n");
-
-	st->vcc_vga_reg = devm_regulator_get_optional(&spi->dev, "vcc-vga");
-	if (IS_ERR(st->vcc_vga_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_vga_reg),
-				     "failed to get the RF Amplifier supply\n");
-
-	st->vcc_vva_reg = devm_regulator_get_optional(&spi->dev, "vcc-vva");
-	if (IS_ERR(st->vcc_vva_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_vva_reg),
-				     "failed to get the VVA Control Circuit supply\n");
-
-	st->vcc_lna_3p3_reg = devm_regulator_get_optional(&spi->dev, "vcc-lna-3p3");
-	if (IS_ERR(st->vcc_lna_3p3_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_lna_3p3_reg),
-				     "failed to get the Low Noise Amplifier 3.3V supply\n");
-
-	st->vcc_lna_1p5_reg = devm_regulator_get_optional(&spi->dev, "vcc-lna-1p5");
-	if (IS_ERR(st->vcc_lna_1p5_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_lna_1p5_reg),
-				     "failed to get the Low Noise Amplifier 1.5V supply\n");
-
-	st->vcc_bg_reg = devm_regulator_get_optional(&spi->dev, "vcc-bg");
-	if (IS_ERR(st->vcc_lna_1p5_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_bg_reg),
-				     "failed to get the Band Gap Circuit supply\n");
-
-	st->vcc_quad_reg = devm_regulator_get_optional(&spi->dev, "vcc-quad");
-	if (IS_ERR(st->vcc_quad_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_quad_reg),
-				     "failed to get the Quadruple supply\n");
-
-	st->vcc_mixer_reg = devm_regulator_get_optional(&spi->dev, "vcc-mixer");
-	if (IS_ERR(st->vcc_quad_reg))
-		return dev_err_probe(&spi->dev, PTR_ERR(st->vcc_mixer_reg),
-				     "failed to get the Mixer supply\n");
+	ret = devm_regulator_bulk_get(&st->spi->dev, ADMV1014_NUM_REGULATORS,
+				      st->regulators);
+	if (ret) {
+		dev_err(&spi->dev, "Failed to request regulators");
+		return ret;
+	}
 
 	st->clkin = devm_clk_get(&spi->dev, "lo_in");
 	if (IS_ERR(st->clkin))
