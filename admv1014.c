@@ -142,7 +142,7 @@ static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 
 	t.rx_buf = &st->data[0];
 	t.tx_buf = &st->data[0];
-	t.len = 3;
+	t.len = sizeof(st->data);
 
 	ret = spi_sync_transfer(st->spi, &t, 1);
 	if (ret)
