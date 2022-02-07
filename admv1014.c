@@ -137,8 +137,8 @@ static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114,
 static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 			       unsigned int *val)
 {
-	int ret;
 	struct spi_transfer t = {};
+	int ret;
 
 	st->data[0] = ADMV1014_READ | FIELD_PREP(ADMV1014_REG_ADDR_READ_MSK, reg);
 	st->data[1] = 0;
@@ -194,8 +194,8 @@ static int admv1014_spi_write(struct admv1014_state *st, unsigned int reg,
 static int __admv1014_spi_update_bits(struct admv1014_state *st, unsigned int reg,
 				      unsigned int mask, unsigned int val)
 {
-	int ret;
 	unsigned int data, temp;
+	int ret;
 
 	ret = __admv1014_spi_read(st, reg, &data);
 	if (ret)
@@ -609,9 +609,9 @@ static void admv1014_powerdown(void *data)
 
 static int admv1014_init(struct admv1014_state *st)
 {
-	int ret;
 	unsigned int chip_id, enable_reg, enable_reg_msk;
 	struct spi_device *spi = st->spi;
+	int ret;
 
 	ret = regulator_bulk_enable(ADMV1014_NUM_REGULATORS, st->regulators);
 	if (ret) {
