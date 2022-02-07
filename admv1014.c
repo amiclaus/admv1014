@@ -137,8 +137,8 @@ static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 	struct spi_transfer t = {};
 
 	st->data[0] = ADMV1014_READ | FIELD_PREP(ADMV1014_REG_ADDR_READ_MSK, reg);
-	st->data[1] = 0x0;
-	st->data[2] = 0x0;
+	st->data[1] = 0;
+	st->data[2] = 0;
 
 	t.rx_buf = &st->data[0];
 	t.tx_buf = &st->data[0];
@@ -240,7 +240,7 @@ static int admv1014_update_vcm_settings(struct admv1014_state *st)
 
 	vcm_mv = regulator_get_voltage(st->regulators[0].consumer) / 1000;
 	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
-		vcm_comp = 1050 + (i * 50) + (i / 8 * 50);
+		vcm_comp = 1050 + mult_frac(i, 450, 8);
 		if (vcm_mv != vcm_comp)
 			continue;
 
