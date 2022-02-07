@@ -407,7 +407,7 @@ static ssize_t admv1014_write(struct iio_dev *indio_dev,
 	unsigned int data, addr, msk;
 	int ret;
 
-	ret = kstrtou32(buf, 10, &data);
+	ret = kstrtouint(buf, 10, &data);
 	if (ret)
 		return ret;
 
