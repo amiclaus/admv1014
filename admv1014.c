@@ -134,7 +134,7 @@ static int __admv1014_spi_read(struct admv1014_state *st, unsigned int reg,
 			       unsigned int *val)
 {
 	int ret;
-	struct spi_transfer t = {0};
+	struct spi_transfer t = {};
 
 	st->data[0] = ADMV1014_READ | FIELD_PREP(ADMV1014_REG_ADDR_READ_MSK, reg);
 	st->data[1] = 0x0;
