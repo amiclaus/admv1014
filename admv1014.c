@@ -481,8 +481,8 @@ static const struct iio_info admv1014_info = {
 };
 
 static const char * const admv1014_reg_name[] = {
-	 "vcm", "vcc-if-bb", "vcc-vga", "vcc-vva", "vcc-lna-3p3", "vcc-lna-1p5",
-	 "vcc-bg", "vcc-quad", "vcc-mixer"
+	 "vcm", "vcc-if-bb", "vcc-vga", "vcc-vva", "vcc-lna-3p3",
+	 "vcc-lna-1p5", "vcc-bg", "vcc-quad", "vcc-mixer"
 };
 
 static int admv1014_freq_change(struct notifier_block *nb, unsigned long action, void *data)
