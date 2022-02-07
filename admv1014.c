@@ -97,13 +97,13 @@
 
 enum {
 	ADMV1014_IQ_MODE,
-	ADMV1014_IF_MODE
+	ADMV1014_IF_MODE,
 };
 
 enum {
 	ADMV1014_SE_MODE_POS = 6,
 	ADMV1014_SE_MODE_NEG = 9,
-	ADMV1014_SE_MODE_DIFF = 12
+	ADMV1014_SE_MODE_DIFF = 12,
 };
 
 enum {
@@ -523,7 +523,7 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.channel = _channel,						\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_PHASE) |		\
 		BIT(IIO_CHAN_INFO_OFFSET),				\
-	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_CALIBSCALE)	\
+	.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_CALIBSCALE),	\
 	}
 
 #define ADMV1014_CHAN_IF(_channel, rf_comp) {				\
@@ -534,7 +534,7 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.channel2 = IIO_MOD_##rf_comp,					\
 	.channel = _channel,						\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_PHASE) |		\
-		BIT(IIO_CHAN_INFO_OFFSET)				\
+		BIT(IIO_CHAN_INFO_OFFSET),				\
 	}
 
 #define ADMV1014_CHAN_POWER(_channel) {					\
@@ -543,7 +543,7 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.indexed = 1,							\
 	.channel = _channel,						\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_SCALE),			\
-	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE)	\
+	.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE),	\
 	}
 
 #define ADMV1014_CHAN_CALIBSCALE(_channel, rf_comp, _admv1014_ext_info) {	\
@@ -553,13 +553,13 @@ static const struct iio_chan_spec_ext_info admv1014_ext_info[] = {
 	.indexed = 1,								\
 	.channel2 = IIO_MOD_##rf_comp,						\
 	.channel = _channel,							\
-	.ext_info = _admv1014_ext_info						\
+	.ext_info = _admv1014_ext_info,						\
 	}
 
 static const struct iio_chan_spec admv1014_channels_iq[] = {
 	ADMV1014_CHAN_IQ(0, I),
 	ADMV1014_CHAN_IQ(0, Q),
-	ADMV1014_CHAN_POWER(0)
+	ADMV1014_CHAN_POWER(0),
 };
 
 static const struct iio_chan_spec admv1014_channels_if[] = {
@@ -567,7 +567,7 @@ static const struct iio_chan_spec admv1014_channels_if[] = {
 	ADMV1014_CHAN_IF(0, Q),
 	ADMV1014_CHAN_CALIBSCALE(0, I, admv1014_ext_info),
 	ADMV1014_CHAN_CALIBSCALE(0, Q, admv1014_ext_info),
-	ADMV1014_CHAN_POWER(0)
+	ADMV1014_CHAN_POWER(0),
 };
 
 static void admv1014_clk_disable(void *data)
