@@ -365,7 +365,7 @@ static ssize_t admv1014_read(struct iio_dev *indio_dev,
 	unsigned int data;
 	int ret;
 
-	switch ((u32)private) {
+	switch (private) {
 	case ADMV1014_CALIBSCALE_COARSE:
 		if (chan->channel2 == IIO_MOD_I) {
 			ret = admv1014_spi_read(st, ADMV1014_REG_IF_AMP, &data);
@@ -411,7 +411,7 @@ static ssize_t admv1014_write(struct iio_dev *indio_dev,
 	if (ret)
 		return ret;
 
-	switch ((u32)private) {
+	switch (private) {
 	case ADMV1014_CALIBSCALE_COARSE:
 		if (chan->channel2 == IIO_MOD_I) {
 			addr = ADMV1014_REG_IF_AMP;
