@@ -221,9 +221,9 @@ static int admv1014_update_quad_filters(struct admv1014_state *st)
 
 	if (rate >= (5400 * HZ_PER_MHZ) && rate <= (7000 * HZ_PER_MHZ))
 		filt_raw = 15;
-	else if (rate >= (5400 * HZ_PER_MHZ) && rate <= (8000 * HZ_PER_MHZ))
+	else if (rate > (7000 * HZ_PER_MHZ) && rate <= (8000 * HZ_PER_MHZ))
 		filt_raw = 10;
-	else if (rate >= (6600 * HZ_PER_MHZ) && rate <= (9200 * HZ_PER_MHZ))
+	else if (rate > (8000 * HZ_PER_MHZ) && rate <= (9200 * HZ_PER_MHZ))
 		filt_raw = 5;
 	else
 		filt_raw = 0;
