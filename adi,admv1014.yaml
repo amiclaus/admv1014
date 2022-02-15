@@ -27,7 +27,7 @@ properties:
     maximum: 1000000
 
   clocks:
-    minItems: 1
+    maxItems: 1
 
   clock-names:
     items:
