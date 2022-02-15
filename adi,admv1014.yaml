@@ -97,9 +97,6 @@ properties:
       diff - Differential Mode.
     enum: [se-neg, se-pos, diff]
 
-  '#clock-cells':
-    const: 0
-
 required:
   - compatible
   - reg
