@@ -111,7 +111,7 @@ examples:
     spi {
       #address-cells = <1>;
       #size-cells = <0>;
-      admv1014@0{
+      converter@0{
         compatible = "adi,admv1014";
         reg = <0>;
         spi-max-frequency = <1000000>;
