@@ -45,6 +45,13 @@
 #include "no_os_error.h"
 
 /******************************************************************************/
+/*************************** Variables Definition *****************************/
+/******************************************************************************/
+
+static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114,
+					117, 118, 119, 120, 122, 123, 44, 45};
+
+/******************************************************************************/
 /************************** Functions Implementation **************************/
 /******************************************************************************/
 
@@ -124,4 +131,175 @@ int admv1014_spi_update_bits(struct admv1014_dev *dev, uint8_t reg_addr,
 	read_val |= data;
 
 	return admv1014_spi_write(dev, reg_addr, read_val);
+}
+
+}
+
+/**
+ * @brief Update Quad Filters.
+ * @param dev - The device structure.
+ * @return Returns 0 in case of success or negative error code otherwise.
+ */
+static int admv1014_update_quad_filters(struct admv1014_dev *dev)
+{
+	unsigned int filt_raw;
+
+	if (dev->lo_in >= (5400 * HZ_PER_MHZ) && dev->lo_in <= (7000 * HZ_PER_MHZ))
+		filt_raw = 15;
+	else if (dev->lo_in > (7000 * HZ_PER_MHZ) && dev->lo_in <= (8000 * HZ_PER_MHZ))
+		filt_raw = 10;
+	else if (dev->lo_in > (8000 * HZ_PER_MHZ) && dev->lo_in <= (9200 * HZ_PER_MHZ))
+		filt_raw = 5;
+	else
+		filt_raw = 0;
+
+	return __admv1014_spi_update_bits(st, ADMV1014_REG_QUAD,
+					ADMV1014_QUAD_FILTERS_MSK,
+					FIELD_PREP(ADMV1014_QUAD_FILTERS_MSK, filt_raw));
+}
+
+/**
+ * @brief Update Mixer Gate Voltage.
+ * @param dev - The device structure.
+ * @return Returns 0 in case of success or negative error code otherwise.
+ */
+static int admv1014_update_vcm_settings(struct admv1013_dev *dev)
+{
+	unsigned int i, vcm_comp, bb_sw_high_low_cm;
+	int ret;
+
+	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
+		vcm_comp = 1050 + (i * 50) + (i / 8 * 50);
+		if (dev->vcm_mv == vcm_comp) {
+			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
+							ADMV1014_MIXER_VGATE_MSK,
+							ADMV1014_MIXER_VGATE(mixer_vgate_table[i]));
+			if (ret < 0)
+				return ret;
+
+			bb_sw_high_low_cm = ~(i / 8);
+
+			return admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
+							ADMV1014_BB_AMP_REF_GEN_MSK |
+							ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK,
+							ADMV1014_BB_AMP_REF_GEN(i) |
+							ADMV1014_BB_SWITCH_HIGH_LOW_CM(bb_sw_high_low_cm));
+		}
+	}
+
+	return -EINVAL;
+}
+
+/**
+ * @brief Initializes the admv1014.
+ * @param device - The device structure.
+ * @param init_param - The structure containing the device initial parameters.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_init(struct admv1014_dev **device,
+		  struct admv1014_init_param *init_param)
+{
+	struct admv1014_dev *dev;
+	uint16_t chip_id, enable_reg, enable_reg_msk;
+	int ret;
+
+	dev = (struct admv1014_dev *)calloc(1, sizeof(*dev));
+	if (!dev)
+		return -ENOMEM;
+
+	/* SPI */
+	ret = no_os_spi_init(&dev->spi_desc, init_param->spi_init);
+	if (ret)
+		goto error_dev;
+
+	dev->lo_in = init_param->lo_in;
+	dev->input_mode = init_param->input_mode;
+	dev->quad_se_mode = init_param->quad_se_mode;
+	dev->det_en = init_param->det_en;
+	dev->vcm_uv = init_param->vcm_uv;
+	dev->p1db_comp_en = init_param->p1db_comp_en;
+
+	/* Perform a software reset */
+	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
+					 ADMV1014_SPI_SOFT_RESET_MSK,
+					 FIELD_PREP(ADMV1014_SPI_SOFT_RESET_MSK, 1));
+	if (ret)
+		goto error_spi;
+
+	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
+					 ADMV1014_SPI_SOFT_RESET_MSK,
+					 FIELD_PREP(ADMV1014_SPI_SOFT_RESET_MSK, 0));
+	if (ret)
+		goto error_spi;
+
+	ret = admv1014_spi_write(dev, ADMV1014_REG_VVA_TEMP_COMP, 0x727C);
+	if (ret)
+		goto error_spi;
+
+	ret = admv1014_spi_read(dev, ADMV1014_REG_SPI_CONTROL, &chip_id);
+	if (ret)
+		goto error_spi;
+
+	chip_id = FIELD_GET(ADMV1014_CHIP_ID_MSK, chip_id);
+	if (chip_id != ADMV1014_CHIP_ID) {
+		ret = -EINVAL;
+		goto error_spi;
+	}
+
+	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_QUAD,
+					 ADMV1014_QUAD_SE_MODE_MSK,
+					 FIELD_PREP(ADMV1014_QUAD_SE_MODE_MSK,
+						    st->quad_se_mode));
+	if (ret)
+		goto error_spi;
+
+	ret = admv1014_update_quad_filters(dev);
+	if (ret)
+		goto error_spi;
+
+	ret = admv1014_update_vcm_settings(dev);
+	if (ret)
+		goto error_spi;
+
+	enable_reg_msk = ADMV1014_P1DB_COMPENSATION_MSK |
+			 ADMV1014_IF_AMP_PD_MSK |
+			 ADMV1014_BB_AMP_PD_MSK |
+			 ADMV1014_DET_EN_MSK;
+
+	enable_reg = FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, dev->p1db_comp_en ? 3 : 0) |
+		     FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, !(dev->input_mode)) |
+		     FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, dev->input_mode) |
+		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en);
+
+	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+	if (ret)
+		goto error_spi;
+
+	*device = dev;
+
+	return 0;
+error_spi:
+	no_os_spi_remove(dev->spi_desc);
+error_dev:
+	free(dev);
+
+	return ret;
+}
+
+/**
+ * @brief ADMV1014 Resources Deallocation.
+ * @param dev - The device structure.
+ * @return Returns 0 in case of success or negative error code otherwise.
+ */
+int admv1014_remove(struct admv1014_dev *dev)
+{
+	int ret;
+
+	ret = no_os_spi_remove(dev->spi_desc);
+	if (ret)
+		return ret;
+
+	free(dev);
+
+	return 0;
 }
