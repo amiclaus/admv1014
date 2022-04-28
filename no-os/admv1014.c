@@ -313,6 +313,9 @@ static int admv1014_update_quad_filters(struct admv1014_dev *dev)
 {
 	unsigned int filt_raw;
 
+	if ((dev->lo_in < 5400000000) || (dev->lo_in > 10250000000))
+                return -EINVAL;
+
 	if ((dev->lo_in >= 5400000000) && (dev->lo_in <= 7000000000))
 		filt_raw = LO_BAND_5_4_TO_7_GHZ;
 	else if ((dev->lo_in > 7000000000) && (dev->lo_in <= 8000000000))
