@@ -134,6 +134,174 @@ int admv1014_spi_update_bits(struct admv1014_dev *dev, uint8_t reg_addr,
 	return admv1014_spi_write(dev, reg_addr, read_val);
 }
 
+/**
+ * @brief Set Digital Rx Detector
+ * @param dev - The device structure.
+ * @param det_prog - Digital Rx Detector gain.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_set_det_prog(struct admv1014_dev *dev,
+			  enum admv1014_det_prog det_prog)
+{
+	return admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
+					ADMV1014_DET_PROG_MSK,
+					no_os_field_prep(ADMV1014_DET_PROG_MSK, det_prog));
+}
+
+/**
+ * @brief Get Digital Rx Detector
+ * @param dev - The device structure.
+ * @param det_prog - Digital Rx Detector gain.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_get_det_prog(struct admv1014_dev *dev,
+			  enum admv1014_det_prog *det_prog)
+{
+	uint16_t data;
+	int ret;
+
+	ret = admv1014_spi_read(dev, ADMV1014_REG_MIXER, &data);
+	if (ret)
+		return ret;
+
+	*det_prog = no_os_field_get(ADMV1014_DET_PROG_MSK, data);
+
+	return 0;
+}
+
+/**
+ * @brief Set Baseband Amp Gain
+ * @param dev - The device structure.
+ * @param gain - Digital Rx Detector gain.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_set_bb_amp_gain(struct admv1014_dev *dev, uint8_t gain)
+{
+	return admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
+					ADMV1014_BB_AMP_GAIN_CTRL_MSK,
+					no_os_field_prep(ADMV1014_BB_AMP_GAIN_CTRL_MSK, gain));
+}
+
+/**
+ * @brief Get Baseband Amp Gain
+ * @param dev - The device structure.
+ * @param gain - Digital Rx Detector gain.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_get_bb_amp_gain(struct admv1014_dev *dev, uint8_t *gain)
+{
+	uint16_t data;
+	int ret;
+
+	ret = admv1014_spi_read(dev, ADMV1014_REG_BB_AMP_AGC, &data);
+	if (ret)
+		return ret;
+
+	*gain = no_os_field_get(ADMV1014_BB_AMP_GAIN_CTRL_MSK, data);
+
+	return 0;
+}
+
+/**
+ * @brief Set LO Amp Phase
+ * @param dev - The device structure.
+ * @param i_phase - The I phase adjust value.
+ * @param q_phase - The Q phase adjust value.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_set_phase(struct admv1014_dev *dev, uint8_t i_phase,
+		       uint8_t q_phase)
+{
+	return admv1014_spi_update_bits(dev, ADMV1014_REG_LO_AMP_PHASE_ADJUST1,
+					ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK |
+					ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK,
+					no_os_field_prep(ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK, i_phase) |
+					no_os_field_prep(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, q_phase));
+}
+
+/**
+ * @brief Get LO Amp Phase
+ * @param dev - The device structure.
+ * @param i_phase - The I phase adjust value.
+ * @param q_phase - The Q phase adjust value.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_get_phase(struct admv1014_dev *dev, uint8_t *i_phase,
+		       uint8_t *q_phase)
+{
+	uint16_t data;
+	int ret;
+
+	ret = admv1014_spi_read(dev, ADMV1014_REG_LO_AMP_PHASE_ADJUST1, &data);
+	if (ret)
+		return ret;
+
+	*i_phase = no_os_field_get(ADMV1014_LOAMP_PH_ADJ_I_FINE_MSK, data);
+	*q_phase = no_os_field_get(ADMV1014_LOAMP_PH_ADJ_Q_FINE_MSK, data);
+
+	return 0;
+}
+
+/**
+ * @brief Set IF Amp Gain
+ * @param dev - The device structure.
+ * @param i_coase_gain - The I coarse gain value.
+ * @param q_coase_gain - The I coarse gain value.
+ * @param i_fine_gain - The Q fine gain value.
+ * @param q_fine_gain - The Q fine gain value.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_set_if_amp_gain(struct admv1014_dev *dev, uint8_t i_coarse_gain,
+			     uint8_t q_coarse_gain, uint8_t i_fine_gain, uint8_t q_fine_gain)
+
+{
+	int ret;
+
+	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP,
+				       ADMV1014_IF_AMP_COARSE_GAIN_I_MSK |
+				       ADMV1014_IF_AMP_FINE_GAIN_Q_MSK |
+				       ADMV1014_IF_AMP_FINE_GAIN_I_MSK,
+				       no_os_field_prep(ADMV1014_IF_AMP_COARSE_GAIN_I_MSK, i_coarse_gain) |
+				       no_os_field_prep(ADMV1014_IF_AMP_FINE_GAIN_Q_MSK, q_fine_gain) |
+				       no_os_field_prep(ADMV1014_IF_AMP_FINE_GAIN_I_MSK, i_fine_gain));
+	if (ret)
+		return ret;
+
+	return admv1014_spi_update_bits(dev, ADMV1014_REG_IF_AMP_BB_AMP,
+					ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK,
+					no_os_field_prep(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, q_coarse_gain));
+}
+
+/**
+ * @brief Get IF Amp Gain
+ * @param dev - The device structure.
+ * @param i_coase_gain - The I coarse gain value.
+ * @param q_coase_gain - The I coarse gain value.
+ * @param i_fine_gain - The Q fine gain value.
+ * @param q_fine_gain - The Q fine gain value.
+ * @return Returns 0 in case of success or negative error code.
+ */
+int admv1014_get_if_amp_gain(struct admv1014_dev *dev, uint8_t *i_coarse_gain,
+			     uint8_t *q_coarse_gain, uint8_t *i_fine_gain, uint8_t *q_fine_gain)
+{
+	uint16_t data;
+	int ret;
+
+	ret = admv1014_spi_read(dev, ADMV1014_REG_IF_AMP, &data);
+	if (ret)
+		return ret;
+
+	*i_coarse_gain = no_os_field_get(ADMV1014_IF_AMP_COARSE_GAIN_I_MSK, data);
+	*q_fine_gain = no_os_field_get(ADMV1014_IF_AMP_FINE_GAIN_Q_MSK, data);
+	*i_fine_gain = no_os_field_get(ADMV1014_IF_AMP_FINE_GAIN_I_MSK, data);
+
+	ret = admv1014_spi_read(dev, ADMV1014_REG_IF_AMP_BB_AMP, &data);
+	if (ret)
+		return ret;
+
+	*i_coarse_gain = no_os_field_get(ADMV1014_IF_AMP_COARSE_GAIN_Q_MSK, data);
+
+	return 0;
 }
 
 /**
