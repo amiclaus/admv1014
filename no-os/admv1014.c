@@ -49,7 +49,8 @@
 /******************************************************************************/
 
 static const int mixer_vgate_table[] = {106, 107, 108, 110, 111, 112, 113, 114,
-					117, 118, 119, 120, 122, 123, 44, 45};
+					117, 118, 119, 120, 122, 123, 44, 45
+				       };
 
 /******************************************************************************/
 /************************** Functions Implementation **************************/
@@ -144,18 +145,18 @@ static int admv1014_update_quad_filters(struct admv1014_dev *dev)
 {
 	unsigned int filt_raw;
 
-	if (dev->lo_in >= (5400 * HZ_PER_MHZ) && dev->lo_in <= (7000 * HZ_PER_MHZ))
-		filt_raw = 15;
-	else if (dev->lo_in > (7000 * HZ_PER_MHZ) && dev->lo_in <= (8000 * HZ_PER_MHZ))
-		filt_raw = 10;
-	else if (dev->lo_in > (8000 * HZ_PER_MHZ) && dev->lo_in <= (9200 * HZ_PER_MHZ))
-		filt_raw = 5;
+	if ((dev->lo_in >= 5400000000) && (dev->lo_in <= 7000000000))
+		filt_raw = LO_BAND_5_4_TO_7_GHZ;
+	else if ((dev->lo_in > 7000000000) && (dev->lo_in <= 8000000000))
+		filt_raw = LO_BAND_5_4_TO_8_GHZ;
+	else if ((dev->lo_in > 8000000000) && (dev->lo_in <= 9200000000))
+		filt_raw = LO_BAND_6_6_TO_9_2_GHZ;
 	else
-		filt_raw = 0;
+		filt_raw = LO_BAND_8_62_TO_10_25_GHZ;
 
-	return __admv1014_spi_update_bits(st, ADMV1014_REG_QUAD,
+	return admv1014_spi_update_bits(dev, ADMV1014_REG_QUAD,
 					ADMV1014_QUAD_FILTERS_MSK,
-					FIELD_PREP(ADMV1014_QUAD_FILTERS_MSK, filt_raw));
+					no_os_field_prep(ADMV1014_QUAD_FILTERS_MSK, filt_raw));
 }
 
 /**
@@ -163,18 +164,20 @@ static int admv1014_update_quad_filters(struct admv1014_dev *dev)
  * @param dev - The device structure.
  * @return Returns 0 in case of success or negative error code otherwise.
  */
-static int admv1014_update_vcm_settings(struct admv1013_dev *dev)
+static int admv1014_update_vcm_settings(struct admv1014_dev *dev)
 {
 	unsigned int i, vcm_comp, bb_sw_high_low_cm;
 	int ret;
 
-	for (i = 0; i < ARRAY_SIZE(mixer_vgate_table); i++) {
+	/* See Datasheet Common-Mode Voltage Settings Table 6 */
+	for (i = 0; i < NO_OS_ARRAY_SIZE(mixer_vgate_table); i++) {
 		vcm_comp = 1050 + (i * 50) + (i / 8 * 50);
 		if (dev->vcm_mv == vcm_comp) {
 			ret = admv1014_spi_update_bits(dev, ADMV1014_REG_MIXER,
-							ADMV1014_MIXER_VGATE_MSK,
-							ADMV1014_MIXER_VGATE(mixer_vgate_table[i]));
-			if (ret < 0)
+						       ADMV1014_MIXER_VGATE_MSK,
+						       no_os_field_prep(ADMV1014_MIXER_VGATE_MSK,
+								       mixer_vgate_table[i]));
+			if (ret)
 				return ret;
 
 			bb_sw_high_low_cm = ~(i / 8);
@@ -182,8 +185,9 @@ static int admv1014_update_vcm_settings(struct admv1013_dev *dev)
 			return admv1014_spi_update_bits(dev, ADMV1014_REG_BB_AMP_AGC,
 							ADMV1014_BB_AMP_REF_GEN_MSK |
 							ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK,
-							ADMV1014_BB_AMP_REF_GEN(i) |
-							ADMV1014_BB_SWITCH_HIGH_LOW_CM(bb_sw_high_low_cm));
+							no_os_field_prep(ADMV1014_BB_AMP_REF_GEN_MSK, i) |
+							no_os_field_prep(ADMV1014_BB_SWITCH_HIGH_LOW_CM_MSK,
+									bb_sw_high_low_cm));
 		}
 	}
 
@@ -216,19 +220,19 @@ int admv1014_init(struct admv1014_dev **device,
 	dev->input_mode = init_param->input_mode;
 	dev->quad_se_mode = init_param->quad_se_mode;
 	dev->det_en = init_param->det_en;
-	dev->vcm_uv = init_param->vcm_uv;
+	dev->vcm_mv = init_param->vcm_mv;
 	dev->p1db_comp_en = init_param->p1db_comp_en;
 
 	/* Perform a software reset */
 	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
-					 ADMV1014_SPI_SOFT_RESET_MSK,
-					 FIELD_PREP(ADMV1014_SPI_SOFT_RESET_MSK, 1));
+				       ADMV1014_SPI_SOFT_RESET_MSK,
+				       no_os_field_prep(ADMV1014_SPI_SOFT_RESET_MSK, 1));
 	if (ret)
 		goto error_spi;
 
 	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_SPI_CONTROL,
-					 ADMV1014_SPI_SOFT_RESET_MSK,
-					 FIELD_PREP(ADMV1014_SPI_SOFT_RESET_MSK, 0));
+				       ADMV1014_SPI_SOFT_RESET_MSK,
+				       no_os_field_prep(ADMV1014_SPI_SOFT_RESET_MSK, 0));
 	if (ret)
 		goto error_spi;
 
@@ -240,16 +244,16 @@ int admv1014_init(struct admv1014_dev **device,
 	if (ret)
 		goto error_spi;
 
-	chip_id = FIELD_GET(ADMV1014_CHIP_ID_MSK, chip_id);
+	chip_id = no_os_field_get(ADMV1014_CHIP_ID_MSK, chip_id);
 	if (chip_id != ADMV1014_CHIP_ID) {
 		ret = -EINVAL;
 		goto error_spi;
 	}
 
 	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_QUAD,
-					 ADMV1014_QUAD_SE_MODE_MSK,
-					 FIELD_PREP(ADMV1014_QUAD_SE_MODE_MSK,
-						    st->quad_se_mode));
+				       ADMV1014_QUAD_SE_MODE_MSK,
+				       no_os_field_prep(ADMV1014_QUAD_SE_MODE_MSK,
+						       dev->quad_se_mode));
 	if (ret)
 		goto error_spi;
 
@@ -266,12 +270,14 @@ int admv1014_init(struct admv1014_dev **device,
 			 ADMV1014_BB_AMP_PD_MSK |
 			 ADMV1014_DET_EN_MSK;
 
-	enable_reg = FIELD_PREP(ADMV1014_P1DB_COMPENSATION_MSK, dev->p1db_comp_en ? 3 : 0) |
-		     FIELD_PREP(ADMV1014_IF_AMP_PD_MSK, !(dev->input_mode)) |
-		     FIELD_PREP(ADMV1014_BB_AMP_PD_MSK, dev->input_mode) |
-		     FIELD_PREP(ADMV1014_DET_EN_MSK, st->det_en);
+	enable_reg = no_os_field_prep(ADMV1014_P1DB_COMPENSATION_MSK,
+				      dev->p1db_comp_en ? 3 : 0) |
+		     no_os_field_prep(ADMV1014_IF_AMP_PD_MSK, !(dev->input_mode)) |
+		     no_os_field_prep(ADMV1014_BB_AMP_PD_MSK, dev->input_mode) |
+		     no_os_field_prep(ADMV1014_DET_EN_MSK, dev->det_en);
 
-	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_ENABLE, enable_reg_msk, enable_reg);
+	ret = admv1014_spi_update_bits(dev, ADMV1014_REG_ENABLE, enable_reg_msk,
+				       enable_reg);
 	if (ret)
 		goto error_spi;
 
