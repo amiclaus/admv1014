@@ -149,6 +149,31 @@ enum admv1014_quad_se_mode {
 };
 
 /**
+ * @enum admv1014_quad_filters
+ * @brief LO Filters BW Selection
+ */
+enum admv1014_quad_filters {
+	LO_BAND_8_62_TO_10_25_GHZ = 0,
+	LO_BAND_6_6_TO_9_2_GHZ = 5,
+	LO_BAND_5_4_TO_8_GHZ = 10,
+	LO_BAND_5_4_TO_7_GHZ = 15
+};
+
+/**
+ * @enum admv1014_det_prog
+ * @brief Digital Rx Detector Program.
+ */
+enum admv1014_det_prog {
+	DET_PROG_NEG_12_DBM_TO_POS_4DBM = 0,
+	DET_PROG_NEG_13_DBM_TO_POS_3DBM = 1,
+	DET_PROG_NEG_14_DBM_TO_POS_2DBM = 2,
+	DET_PROG_NEG_15_DBM_TO_POS_1DBM = 4,
+	DET_PROG_NEG_15_5_DBM_TO_POS_0_5_DBM = 8,
+	DET_PROG_NEG_16_25_DBM_TO_NEG_0_25_DBM = 16,
+	DET_PROG_NEG_17_DBM_TO_NEG_1DBM = 32,
+	DET_PROG_NEG_18_DBM_TO_NEG_2DBM = 64,
+};
+/**
  * @struct admv1014_init_param
  * @brief ADMV1014 Initialization Parameters structure.
  */
