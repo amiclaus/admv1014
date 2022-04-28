@@ -124,6 +124,11 @@
 #define ADMV1014_REG_DATA_MSK			NO_OS_GENMASK(16, 1)
 #define ADMV1014_NUM_REGULATORS			9
 
+/* Specifications */
+#define ADMV1014_BUFF_SIZE_BYTES		3
+#define ADMV1014_SPI_READ_CMD			NO_OS_BIT(7)
+#define ADMV1014_SPI_WRITE_CMD			(0 << 7)
+
 /**
  * @enum admv1014_input_mode
  * @brief Switch Intermediate Frequency or I/Q Mode
