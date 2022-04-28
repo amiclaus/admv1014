@@ -231,6 +231,36 @@ int admv1014_spi_update_bits(struct admv1014_dev *dev, uint8_t reg_addr,
 int admv1014_spi_read(struct admv1014_dev *dev, uint8_t reg_addr,
 		      uint16_t *data);
 
+/** Set Digital Rx Detector */
+int admv1014_set_det_prog(struct admv1014_dev *dev,
+			  enum admv1014_det_prog det_prog);
+
+/** Get Digital Rx Detector */
+int admv1014_get_det_prog(struct admv1014_dev *dev,
+			  enum admv1014_det_prog *det_prog);
+
+/** Set Baseband Amp Gain */
+int admv1014_set_bb_amp_gain(struct admv1014_dev *dev, uint8_t gain);
+
+/** Get Baseband Amp Gain */
+int admv1014_get_bb_amp_gain(struct admv1014_dev *dev, uint8_t *gain);
+
+/** Set LO Amp Phase */
+int admv1014_set_phase(struct admv1014_dev *dev, uint8_t i_phase,
+		       uint8_t q_phase);
+
+/** Get LO Amp Phase */
+int admv1014_get_phase(struct admv1014_dev *dev, uint8_t *i_phase,
+		       uint8_t *q_phase);
+
+/** Set IF Amp Gain */
+int admv1014_set_if_amp_gain(struct admv1014_dev *dev, uint8_t i_coarse_gain,
+			     uint8_t q_coarse_gain, uint8_t i_fine_gain, uint8_t q_fine_gain);
+
+/** Get IF Amp Gain */
+int admv1014_get_if_amp_gain(struct admv1014_dev *dev, uint8_t *i_coarse_gain,
+			     uint8_t *q_coarse_gain, uint8_t *i_fine_gain, uint8_t *q_fine_gain);
+
 /** ADMV1014 Initialization */
 int admv1014_init(struct admv1014_dev **device,
 		  struct admv1014_init_param *init_param);
